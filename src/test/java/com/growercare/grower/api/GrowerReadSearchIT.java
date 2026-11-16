@@ -101,8 +101,11 @@ class GrowerReadSearchIT extends GrowerApiTestBase {
     }
 
     @Test
-    void GRW_E65_thePhoneIsNeverAcceptedInAUrl() throws Exception {
+    @org.junit.jupiter.api.extension.ExtendWith(org.springframework.boot.test.system.OutputCaptureExtension.class)
+    void GRW_E65_thePhoneIsNeverAcceptedInAUrlAndNeverLogged(org.springframework.boot.test.system.CapturedOutput output) throws Exception {
         var status = as(CARE_IN, get("/growers").param("phone", "+919876543210")).andReturn().getResponse().getStatus();
-        assertThat(status).isNotEqualTo(200);
+        assertThat(status).isIn(404, 405);
+        search(CARE_IN, "+919876543210", "IN").andExpect(status().isOk());   // the supported way, for the log check too
+        assertThat(output.getAll()).doesNotContain("9876543210");
     }
 }

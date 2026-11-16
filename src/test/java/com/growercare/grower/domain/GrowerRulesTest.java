@@ -22,6 +22,32 @@ class GrowerRulesTest {
         assertThat(GrowerRules.maskName(name)).isEqualTo(masked);
     }
 
+    static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> names() {
+        return java.util.stream.Stream.of(
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 ordinary name", "Ramesh Patil", true),
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 120 characters", "x".repeat(120), true),
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 121 characters", "x".repeat(121), false),
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 empty", "", false),
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 null", null, false),
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 NUL inside", "Anil\u0000Shinde", false),
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 newline inside", "Anil\nShinde", false),
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 accented letters", "Joaõ Silvá", true));
+    }
+
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.MethodSource("names")
+    void displayNames(String name, boolean valid) {
+        assertThat(GrowerRules.isValidName(name)).isEqualTo(valid);
+    }
+
+    @Test
+    void requestHashCannotBeShiftedAcrossFields() {
+        var key = UUID.randomUUID();
+        var a = new NewGrowerCommand(1002L, "Anil", "+919988776655", "mr", null, key);
+        var b = new NewGrowerCommand(1002L, "Anil+919988776655", "", "mr", null, key);   // same concatenation, other fields
+        assertThat(Arrays.equals(GrowerRules.requestHash(a, 1L), GrowerRules.requestHash(b, 1L))).isFalse();
+    }
+
     @ParameterizedTest(name = "GRW-R15 language {0} → {1}")
     @CsvSource(textBlock = """
             mr,    true

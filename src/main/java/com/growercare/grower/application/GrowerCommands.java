@@ -69,8 +69,8 @@ public class GrowerCommands {
 
         // R15 — request rules that need no reference data
         var name = cmd.displayName().strip();
-        if (name.isEmpty() || name.length() > GrowerRules.MAX_NAME) {
-            throw ValidationException.of("displayName", "must be 1-" + GrowerRules.MAX_NAME + " characters");
+        if (!GrowerRules.isValidName(name)) {
+            throw ValidationException.of("displayName", "must be 1-" + GrowerRules.MAX_NAME + " characters without control characters");
         }
         if (!GrowerRules.isSupportedLanguage(cmd.preferredLanguage())) {
             throw ValidationException.of("preferredLanguage", "must be an ISO 639-1 language, e.g. mr or pt-BR");

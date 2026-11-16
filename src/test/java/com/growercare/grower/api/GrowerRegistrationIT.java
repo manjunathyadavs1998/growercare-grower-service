@@ -119,6 +119,7 @@ class GrowerRegistrationIT extends GrowerApiTestBase {
         return Stream.of(
                 argumentSet("GRW-E28 blank name", "displayName", "", "displayName"),
                 argumentSet("GRW-E28 121-char name", "displayName", "x".repeat(121), "displayName"),
+                argumentSet("GRW-E28 control character (NUL) in the name", "displayName", "Anil\u0000Shinde", "displayName"),
                 argumentSet("GRW-E28 phone of another country", "phone", "+55 11 91234 5678", "phone"),
                 argumentSet("GRW-E28 phone too short", "phone", "12345", "phone"),
                 argumentSet("GRW-E28 unsupported language", "preferredLanguage", "xx", "preferredLanguage"),

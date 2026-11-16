@@ -35,7 +35,7 @@
 | GRW-R12 | GROWER already linked to a grower | registers self again | 409 `DUPLICATE` ("already registered"; the platform error catalogue has one 409 code for duplicates) |
 | GRW-R13 | phone already in the country's directory | register | 409 `DUPLICATE` ("phone already registered"). The response **never** contains the other grower's id (no enumeration) |
 | GRW-R14 | territory unknown, inactive, or outside the caller's create scope (staff: the grant's geography; growers and partners: their own home country only); or `preferredPartnerOrgId` not an active partner in the same country | register | 404 `NOT_FOUND` for the territory (scope), 422 `grower.partner-invalid` for the partner |
-| GRW-R15 | invalid input: blank or > 120-char `displayName`; phone that does not normalise to a valid E.164 number **for the territory's country**; unsupported `preferredLanguage`; malformed ids; missing or invalid `Idempotency-Key` | register | 400 `VALIDATION_FAILED` with `errors[].field` |
+| GRW-R15 | invalid input: blank or > 120-char `displayName`, or one containing control characters (e.g. NUL); phone that does not normalise to a valid E.164 number **for the territory's country**; unsupported `preferredLanguage`; malformed ids; missing or invalid `Idempotency-Key` | register | 400 `VALIDATION_FAILED` with `errors[].field` |
 | GRW-R16 | same `Idempotency-Key`, identical body | register retried | 200 with the original grower, `Idempotent-Replayed: true`; no second row or event |
 | GRW-R17 | same `Idempotency-Key`, different body | register | 409 `IDEMPOTENCY_KEY_REUSED` |
 | GRW-R18 | a new grower | stored | in the D1 shard of the territory's country; `grower_id` decodes to that country and shard; directory row in the same transaction |
@@ -118,7 +118,7 @@ Names, users, territories, partners and last-4 digits match case-service's repli
 | GRW-E26 | R14 | care.in | territory 2002 (BR) | 404 |
 | GRW-E27 | R14 | care.in | `preferredPartnerOrgId` of a BR partner | 422 `grower.partner-invalid` |
 | GRW-E27a | R14 | retailer.in (IN partner) | territory 2002 (BR) | 404 (partners onboard only in their own country) |
-| GRW-E28 | R15 | care.in | `displayName` "" · 121 chars · phone `+55 11 91234 5678` for an IN territory · phone `12345` · language `xx` · no `Idempotency-Key` · `territoryId "abc"` · `territoryId "9999999999999999999"` (above the 64-bit range) | 400 `VALIDATION_FAILED`, `errors[].field` = displayName · displayName · phone · phone · preferredLanguage · Idempotency-Key · territoryId · territoryId (never 500) |
+| GRW-E28 | R15 | care.in | `displayName` "" · 121 chars · `"Anil\u0000Shinde"` · phone `+55 11 91234 5678` for an IN territory · phone `12345` · language `xx` · no `Idempotency-Key` · `territoryId "abc"` · `territoryId "9999999999999999999"` (above the 64-bit range) | 400 `VALIDATION_FAILED`, `errors[].field` = displayName · displayName · displayName · phone · phone · preferredLanguage · Idempotency-Key · territoryId · territoryId (never 500) |
 | GRW-E29 | R15 | care.in | `displayName` exactly 120 chars | 201 (boundary) |
 | GRW-E30 | R16 | care.in | E21 retried with the same key and body | 200, `Idempotent-Replayed: true`, one row, one event |
 | GRW-E31 | R17 | care.in | same key, other phone | 409 `IDEMPOTENCY_KEY_REUSED` |
@@ -147,7 +147,7 @@ Names, users, territories, partners and last-4 digits match case-service's repli
 | GRW-E62 | R30 | care.in | unregistered number | `{items:[]}` |
 | GRW-E63 | R30 | retailer2.in | phone of G1 | `{items:[]}` (out of scope, same answer as unregistered) |
 | GRW-E64 | R32 | care.br | phone of G1, `countryCode "IN"` | `{items:[]}` |
-| GRW-E65 | R31 | care.in | `GET /growers?phone=…` | not 200; access log contains no phone digits |
+| GRW-E65 | R31 | care.in | `GET /growers?phone=…` | 404 or 405 (no such route); the service log contains no phone digits |
 
 ### Phone normalisation and protection (unit level, D3 · R15 phone field · R30)
 | Example | Rule | Country plan | Input | Expected |
