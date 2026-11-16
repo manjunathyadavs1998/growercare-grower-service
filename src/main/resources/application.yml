@@ -1,0 +1,111 @@
+# SPEC-PLAT-06 R76/R77 (ADR-017): every environment-specific value comes ONLY from the environment. Hosts, URLs, users,
+# passwords and secrets are placeholders without a default; the service refuses to start, naming every missing variable
+# (gc.required-properties). Behaviour tunables keep safe production defaults. Variables: .env.example.
+gc.required-properties: >-
+  spring.datasource.url, spring.datasource.username, spring.datasource.password,
+  gc.migration.cdc-role,
+  spring.security.oauth2.resourceserver.jwt.issuer-uri, spring.security.oauth2.resourceserver.jwt.jwk-set-uri,
+  spring.security.oauth2.client.registration.iam.client-id, spring.security.oauth2.client.registration.iam.client-secret,
+  spring.security.oauth2.client.provider.keycloak.token-uri,
+  gc.iam.base-url, spring.data.redis.host, spring.data.redis.password,
+  gc.phone.hmac-key, gc.phone.encryption-key, gc.phone.encryption-key-id
+
+server:
+  port: ${SERVER_PORT:8083}
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+    include-message: never
+
+spring:
+  application:
+    name: grower-service
+  threads:
+    virtual:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_APP_USER}
+    password: ${DB_APP_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      connection-timeout: 3000
+  flyway:
+    enabled: false   # Boot's single-schema Flyway is not used; see gc.migration (ShardedFlywayMigrator)
+
+# SPEC-PLAT-01 D1: API docs off unless GC_API_DOCS_ENABLED=true (local).
+springdoc:
+  api-docs:
+    enabled: ${GC_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${GC_API_DOCS_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+gc:
+  # Sharded migrations (common `ref` schema + one schema per ref.shard row), run as the schema OWNER.
+  # Production: GC_MIGRATE=false on the service, migrations from a pre-deploy Job (owner credentials only there).
+  migration:
+    enabled: ${GC_MIGRATE:false}
+    owner-user: ${DB_OWNER_USER:}
+    owner-password: ${DB_OWNER_PASSWORD:}
+    app-role: ${spring.datasource.username}
+    cdc-role: ${GC_CDC_ROLE}
+    dev-seed: ${GC_DEV_SEED:false}                 # local only: territories, partners, growers
+    parallelism: ${GC_MIGRATE_PARALLELISM:8}
+
+  # SPEC-GRW-01 D3: phone numbers are stored only as HMAC (lookup), AES-256-GCM ciphertext (later unmask) and last 4.
+  # Keys are base64, 32 bytes each; AWS: Secrets Manager → External Secrets (KMS-generated). The key id is stored with
+  # every ciphertext so keys can rotate.
+  phone:
+    hmac-key: ${GC_PHONE_HMAC_KEY}
+    encryption-key: ${GC_PHONE_ENC_KEY}
+    encryption-key-id: ${GC_PHONE_ENC_KEY_ID}
+
+# ---------------------------------------------------------------- security (skill: java-security-rbac)
+# Keycloak proves identity; roles/scopes come from IAM grants. Tokens carry iss = OIDC_ISSUER_URI (validated);
+# signing keys come from OIDC_JWKS_URI and service tokens from OIDC_TOKEN_URI (reachable inside the network).
+spring.security.oauth2.resourceserver.jwt:
+  issuer-uri: ${OIDC_ISSUER_URI}
+  jwk-set-uri: ${OIDC_JWKS_URI}
+  audiences: gc-api,gc-internal
+
+# Client-credentials token for calling IAM's /internal API (Keycloak client "grower-service", audience gc-internal).
+spring.security.oauth2.client:
+  registration:
+    iam:
+      provider: keycloak
+      client-id: ${IAM_CLIENT_ID}
+      client-secret: ${IAM_CLIENT_SECRET}
+      authorization-grant-type: client_credentials
+  provider:
+    keycloak:
+      token-uri: ${OIDC_TOKEN_URI}
+
+# Redis: principal cache only (ADR-011). Short timeouts so an outage degrades to direct IAM calls.
+spring.data.redis:
+  host: ${REDIS_HOST}
+  port: ${REDIS_PORT:6379}
+  password: ${REDIS_PASSWORD}
+  timeout: 500ms
+  connect-timeout: 500ms
+
+# Another service, reached only over the network (SPEC-PLAT-06 R75).
+gc.iam:
+  base-url: ${IAM_BASE_URL}
+  connect-timeout: 1s
+  read-timeout: 2s
+gc.security:
+  principal-cache-ttl: 5m
+  cors-allowed-origins: ${GC_CORS_ALLOWED_ORIGINS:}
