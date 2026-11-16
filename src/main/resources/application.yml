@@ -7,11 +7,11 @@ gc.required-properties: >-
   spring.security.oauth2.resourceserver.jwt.issuer-uri, spring.security.oauth2.resourceserver.jwt.jwk-set-uri,
   spring.security.oauth2.client.registration.iam.client-id, spring.security.oauth2.client.registration.iam.client-secret,
   spring.security.oauth2.client.provider.keycloak.token-uri,
-  gc.iam.base-url, spring.data.redis.host, spring.data.redis.password,
+  gc.iam.base-url, spring.data.redis.host, spring.data.redis.password, gc.security.internal-clients,
   gc.phone.hmac-key, gc.phone.encryption-key, gc.phone.encryption-key-id
 
 server:
-  port: ${SERVER_PORT:8083}
+  port: ${SERVER_PORT:8084}
   shutdown: graceful
   error:
     include-stacktrace: never
@@ -107,5 +107,6 @@ gc.iam:
   connect-timeout: 1s
   read-timeout: 2s
 gc.security:
+  internal-clients: ${GC_INTERNAL_CLIENTS}        # service clients allowed on /internal/** (SPEC-GRW-01 R42)
   principal-cache-ttl: 5m
   cors-allowed-origins: ${GC_CORS_ALLOWED_ORIGINS:}

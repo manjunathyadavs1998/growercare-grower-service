@@ -61,7 +61,7 @@
         <artifactId>jib-maven-plugin</artifactId>
         <configuration>
           <container>
-            <ports><port>8083</port></ports>
+            <ports><port>8084</port></ports>
           </container>
         </configuration>
       </plugin>
