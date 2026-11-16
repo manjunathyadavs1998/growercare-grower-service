@@ -1,0 +1,19 @@
+# Test values for the environment variables application.yml reads (SPEC-PLAT-06 R77). Tests override the real
+# connection settings with Testcontainers (DynamicPropertySource), stub IAM and decode JWTs with TestJwts.
+DB_URL: jdbc:postgresql://set-by-testcontainers.invalid/none
+DB_APP_USER: set-by-testcontainers
+DB_APP_PASSWORD: set-by-testcontainers
+GC_CDC_ROLE: gc_cdc
+OIDC_ISSUER_URI: http://issuer.test.invalid/realms/growercare
+OIDC_JWKS_URI: http://issuer.test.invalid/realms/growercare/protocol/openid-connect/certs
+OIDC_TOKEN_URI: http://issuer.test.invalid/realms/growercare/protocol/openid-connect/token
+IAM_BASE_URL: http://iam.test.invalid
+IAM_CLIENT_ID: grower-service
+IAM_CLIENT_SECRET: test-secret
+GC_INTERNAL_CLIENTS: case-service
+REDIS_HOST: set-by-testcontainers.invalid
+REDIS_PASSWORD: set-by-testcontainers
+# the dev keys from .env.example, so the dev-seed growers decrypt (SPEC-GRW-01 D3)
+GC_PHONE_HMAC_KEY: ZGV2LW9ubHktcGhvbmUtaG1hYy1rZXktMzItYnl0ZXM=
+GC_PHONE_ENC_KEY: ZGV2LW9ubHktcGhvbmUtZW5jcnlwdGlvbi1rZXktMzI=
+GC_PHONE_ENC_KEY_ID: dev-1

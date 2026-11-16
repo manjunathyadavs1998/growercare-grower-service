@@ -1,7 +1,7 @@
 # SPEC-GRW-01: Grower registry (register, read, update, find by phone)
 - **Requirements:** GRW-1 (grower profile part), IAM-1 (assisted onboarding), ACC-1, ACC-3, ACC-11, PRV-5, ID-1/ID-3/ID-4/ID-8, convention 1–5
-- **Status:** Agreed (2026-11-16). Implemented: increment 0 (phone normalisation and protection, D3, E80–E85), increment 1 (schema, R50–R57, E90–E97)
-- **Owner:** grower-service (new repository `growercare-grower-service`, port 8083)
+- **Status:** Agreed (2026-11-16). Implemented: increment 0 (phone normalisation and protection, D3, E80–E85), increment 1 (schema, R50–R57, E90–E97), increment 2 (access and security: R1–R5 / E01–E11, R40–R42 at wiring level, R41 client)
+- **Owner:** grower-service (repository `growercare-grower-service`, port 8084; 8083 is Kafka Connect locally)
 - **Follow-ups (separate specs):** SPEC-GRW-02 farms/plots and crops · SPEC-GRW-03 consents + OTP confirmation of assisted onboarding (PRV-1) · SPEC-GRW-04 audited phone unmask (ACC-3) · SPEC-CASE-06 case-service replica sync from `grower.*` events
 
 ## 0. Decisions (to agree with this spec)
@@ -75,7 +75,7 @@
 |---|---|---|---|
 | GRW-R40 | no/invalid token · valid token without an account | any request | 401 problem+json |
 | GRW-R41 | IAM unreachable, slow or unreadable | any request | 503 `DEPENDENCY_UNAVAILABLE`, never 500 (as CASE-R9/R9a) |
-| GRW-R42 | allow-listed service client (aud `gc-internal`) | `GET /internal/growers/{id}` | 200 replica view `{growerId, countryCode, territoryId, userId, displayName, phoneHmac, phoneLast4, preferredPartnerOrgId, status, version}` for SPEC-CASE-06; user token → 403 |
+| GRW-R42 | allow-listed service client (aud `gc-internal`) | `GET /internal/growers/{id}` | 200 replica view `{growerId, countryCode, territoryId, userId, displayName, phoneHmac, phoneLast4, preferredPartnerOrgId, status, version}` for SPEC-CASE-06; user token on `/internal` → 403; allow-listed service token on the user API → 403, a service client that is not allow-listed → 401 (as IAM-R17, CASE-R10) |
 | GRW-R43 | missing env variable (`GC_PHONE_HMAC_KEY`, `GC_PHONE_ENC_KEY`, DB, IAM, Keycloak…) | start | refuses to start naming every missing variable (SPEC-PLAT-06) |
 
 ## 2. Examples
@@ -174,7 +174,7 @@ Names, users, territories, partners and last-4 digits match case-service's repli
 |---|---|---|---|
 | GRW-E70 | R40 | no token · forged token · valid token of an unknown subject | 401 problem+json |
 | GRW-E71 | R41 | IAM 5xx · body cut mid-response · token endpoint refuses | 503 `DEPENDENCY_UNAVAILABLE` |
-| GRW-E72 | R42 | case-service client token · grower.in1 user token | 200 replica view of G1 (with `phoneHmac`) · 403 |
+| GRW-E72 | R42 | case-service client token · care.in user token on `/internal` · case-service token on `/growers/{id}` · integration-service (not allow-listed) token | 200 replica view of G1 (with `phoneHmac`) · 403 · 403 · 401 |
 | GRW-E73 | R43 | start without `GC_PHONE_HMAC_KEY` and `GC_PHONE_ENC_KEY` | startup fails naming both |
 
 ## 3. API contract
@@ -221,11 +221,11 @@ Database `gc_grower`, owner/app role split, migrations as in `sharded-migration`
 ## 6. Traceability
 | Rule / Example | Test |
 |---|---|
-| R1–R5 / E01–E11 | `GrowerIsolationIT#visibleGrowers` (matrix), `GrowerScopeTest#filterAndEnforcerAgree` |
+| R1–R5 / E01–E11 | `GrowerAccessTest#visibleGrowers`, `#requireAnswers404OutsideScope`, `#expiredAndGlobalGrantsSeeNothing`, `#growerViewMapsScopesAndIgnoresBu`; `GrowerIsolationIT#sqlFilterAndEnforcerAgree` (E11, SQL over the seeded shards) |
 | R10–R18 / E20–E33 | `GrowerRegistrationIT#registers`, `#rejected`, `#idempotency`; `GrowerPlacementTest#placementMatchesDecodedId` |
 | R20–R27 / E40–E49 | `GrowerUpdateIT#reads`, `#updates`, `#rejectedUpdates`; `GrowerViewTest#namesAreMaskedByClearance` |
 | R30–R32 / E60–E65 | `GrowerSearchIT#findsByPhone` |
 | D1 placement / E32 (unit part) | `GrowerPlacementTest#shardOfHmac` |
 | R50–R57 / E90–E97 | `GrowerSchemaMigrationIT` (nested by rule), `ShardMigrationConventionsTest` |
 | D3 / E80–E85 | `PhoneNumberTest#normalises`, `#rejects`, `#lastFourAndToString`; `PhoneProtectorTest#hmac`, `#encryption` |
-| R40–R43 / E70–E73 | `GrowerSecurityIT`, `IamPrincipalClientTest`, `InternalGrowerApiIT`, `ConfigurationHygieneTest` |
+| R40–R43 / E70–E73 | `GrowerSecurityIT#rejectedCallers`, `#acceptedCallersPassSecurity` (wiring; the 200 of E72 with `InternalGrowerApiIT` in increment 3); `IamPrincipalClientTest` (E70/E71 client side); `ConfigurationHygieneTest` (E73) |

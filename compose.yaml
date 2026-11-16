@@ -7,7 +7,7 @@ services:
     container_name: gc-grower
     env_file: .env                     # the ONLY configuration input (SPEC-PLAT-06 R77)
     ports:
-      - "8083:8083"
+      - "8084:8084"                    # 8083 is Kafka Connect in growercare-local-platform
     restart: unless-stopped
 
 networks:
