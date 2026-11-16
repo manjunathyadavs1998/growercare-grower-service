@@ -1,18 +1,19 @@
 # SPEC-GRW-01: Grower registry (register, read, update, find by phone)
 - **Requirements:** GRW-1 (grower profile part), IAM-1 (assisted onboarding), ACC-1, ACC-3, ACC-11, PRV-5, ID-1/ID-3/ID-4/ID-8, convention 1–5
-- **Status:** Agreed (2026-11-16); increment 0 implemented: phone normalisation and protection (D3, E80–E85)
+- **Status:** Agreed (2026-11-16). Implemented: increment 0 (phone normalisation and protection, D3, E80–E85), increment 1 (schema, R50–R57, E90–E97)
 - **Owner:** grower-service (new repository `growercare-grower-service`, port 8083)
 - **Follow-ups (separate specs):** SPEC-GRW-02 farms/plots and crops · SPEC-GRW-03 consents + OTP confirmation of assisted onboarding (PRV-1) · SPEC-GRW-04 audited phone unmask (ACC-3) · SPEC-CASE-06 case-service replica sync from `grower.*` events
 
 ## 0. Decisions (to agree with this spec)
 | # | Decision | Why |
 |---|---|---|
-| D1 | **Placement:** a new grower is written to shard `fmix64(phone_hmac) mod 64` of its country, and `grower_id` comes from that shard's `next_id()` (same 64-bit layout as `case_id`). Reads by id **decode** the shard from the id (`ShardRouter.forId`), with no lookup | Grower row and its phone-directory row land in the **same shard**, so register and find-by-phone are single-shard transactions. The id is unknown before the insert, so `hash(grower_id)` cannot place the grower row itself |
+| D1 | **Placement:** a new grower is written to shard `unsigned(first 8 bytes of phone_hmac) mod 64` of its country (an HMAC is already uniformly distributed, so no extra mixing is needed), and `grower_id` comes from that shard's `next_id()` (same 64-bit layout as `case_id`). Reads by id **decode** the shard from the id (`ShardRouter.forId`), with no lookup | Grower row and its phone-directory row land in the **same shard**, so register and find-by-phone are single-shard transactions. The id is unknown before the insert, so `hash(grower_id)` cannot place the grower row itself |
 | D2 | **Cases stay where they are:** case-service keeps routing a grower's cases by `fmix64(grower_id) mod 64` (ADR-002). The grower's own row and its cases may sit in different shards; each service owns its own database, so that's fine | No change to case-service; a grower's cases stay co-located |
 | D3 | **Phone handling:** normalised to E.164 using the country's **phone plan from reference data** (`ref.country.calling_code` + `national_pattern`, e.g. IN `91` / `[6-9][0-9]{9}`, BR `55` / `[1-9][0-9]{9,10}`; convention 4, no country `if`s): spaces, dashes, brackets and a leading trunk `0` are removed; `+<cc>…` must carry the territory's own calling code. Stored as `phone_hmac` (HMAC-SHA-256, key `GC_PHONE_HMAC_KEY`) for lookup, `phone_enc` (AES-256-GCM, key `GC_PHONE_ENC_KEY` + `phone_key_id` for rotation) for a later unmask, and `phone_last4` for display. Plain phone numbers are never stored, logged, put in events or **put in URLs** | PRV-5; HMAC because a plain hash of a 10-digit number is brute-forceable |
 | D4 | **Country is never taken from the client.** The grower's country is the country of `territoryId` (validated against the `ref.territory` replica); the caller must have that territory in scope | Convention 1 |
 | D5 | **Phone is immutable in this spec.** Changing a number moves the directory entry across shards and needs OTP proof of the new number; that flow is SPEC-GRW-03 | Keeps every write in SPEC-GRW-01 single-shard |
 | D6 | **Dev seed:** growers get properly encoded ids (country IN = 46 / BR, the shard from D1). case-service keeps its own seeded replica (70001…) for its tests until SPEC-CASE-06 syncs the replica from events; `smoke.sh` then registers a grower here before raising a case | Seeded 70001-style ids do not decode to a shard |
+| D8 | **User link outside the shards:** "one grower per user" (R12) needs a lookup by `userId`, which does not route to a shard. `dir.grower_user_link(user_id PK, grower_id UNIQUE)` is written in the registering transaction; the app role may only SELECT and INSERT it. With one cluster per country this is one transaction; across clusters it becomes insert-link-first with a cleanup job (noted in `docs/schema.md`) | Keeps R12 race-free without a cross-shard scan |
 | D7 | **New permissions** `grower:create`, `grower:read`, `grower:update`, added to IAM roles by a migration in identity-access-service (same PR series) | Authorization stays in IAM grants (ACC-1) |
 
 ## 1. Behaviour (rules)
@@ -36,7 +37,7 @@
 | GRW-R15 | invalid input: blank or > 120-char `displayName`; phone that does not normalise to a valid E.164 number **for the territory's country**; unsupported `preferredLanguage`; malformed ids; missing or invalid `Idempotency-Key` | register | 400 `VALIDATION_FAILED` with `errors[].field` |
 | GRW-R16 | same `Idempotency-Key`, identical body | register retried | 200 with the original grower, `Idempotent-Replayed: true`; no second row or event |
 | GRW-R17 | same `Idempotency-Key`, different body | register | 409 `IDEMPOTENCY_KEY_REUSED` |
-| GRW-R18 | a new grower | stored | in shard `fmix64(phone_hmac) mod 64` of the territory's country (D1); `grower_id` decodes to that country and shard; directory row in the same transaction |
+| GRW-R18 | a new grower | stored | in the D1 shard of the territory's country; `grower_id` decodes to that country and shard; directory row in the same transaction |
 
 ### Read and update
 | Rule | Given | When | Then |
@@ -57,6 +58,18 @@
 | GRW-R31 | — | phone sent as a query parameter (`GET /growers?phone=`) | not supported: 405/404 by routing; the phone never appears in a URL or access log (PRV-5) |
 | GRW-R32 | `countryCode` not in the caller's scope | search | `{items:[]}` (here the country is a search hint, not trusted for placement; it only selects the directory) |
 
+### Schema (increment 1; database `gc_grower`)
+| Rule | Given | When | Then |
+|---|---|---|---|
+| GRW-R50 | a row inserted into a shard's `grower` without an id | — | `grower_id` comes from that shard's `next_id()` and decodes (`IdCodec`) to the shard's country and shard number |
+| GRW-R51 | a shard's `phone_directory` | the same `phone_hmac` is inserted twice | rejected by `phone_directory_pk` (R13 under concurrency) |
+| GRW-R52 | a grower row | territory or partner of another country, country other than the shard's, SELF without a user, ASSISTED without the onboarding user, malformed HMAC or last 4 | rejected by a named constraint |
+| GRW-R53 | `dir.grower_user_link` | the same user is linked twice | rejected by `grower_user_link_pk` (R12 under concurrency) |
+| GRW-R54 | the runtime (app) role | DDL; writes to `ref.*`; DELETE on `grower`, `phone_directory` or `dir.grower_user_link`; UPDATE of `dir.grower_user_link` | `permission denied` (least privilege) |
+| GRW-R55 | every shard schema | — | its `outbox` is in publication `gc_outbox`; the CDC role can read only the outbox tables and the heartbeat |
+| GRW-R56 | the dev seed (local and tests only) | — | each seed grower's id decodes to the D1 shard of its phone HMAC (dev key), and its directory row is in that shard |
+| GRW-R57 | an already migrated database | migration runs again | no migration executed |
+
 ### Platform behaviour (same as case-service)
 | Rule | Given | When | Then |
 |---|---|---|---|
@@ -70,10 +83,12 @@
 
 | Grower | User | Country | Territory | Preferred partner | Onboarded via | Phone (last4) |
 |---|---|---|---|---|---|---|
-| G1 Ramesh Patil | 1 (grower.in1) | IN | 1002 | 501 | — | +91 98765 43210 (3210) |
-| G2 Sunita Pawar | 2 (grower.in2) | IN | 1003 | — | — | (4321) |
-| G3 Mahesh Gowda | — (assisted) | IN | 1005 | — | 502 | (5432) |
-| G4 João Silva | 3 (grower.br1) | BR | 2002 | — | — | (6543) |
+| G1 Ramesh Patil | 1 (grower.in1) | IN | 1002 Pune | 501 | — | `+91 98765 43210` (3210) |
+| G2 Sunita Rao | 2 (grower.in2) | IN | 1003 Nashik | 502 | — | `+91 98223 37788` (7788) |
+| G3 Lakshmi (assisted onboarding) | — | IN | 1005 Bengaluru Rural | — | 502 (onboarded by retailer2.in) | `+91 98450 55432` (5432), status PENDING_CONSENT |
+| G4 Joao Silva | 3 (grower.br1) | BR | 2002 Ribeirão Preto | — | — | `+55 16 99123 4455` (4455) |
+
+Names, users, territories, partners and last-4 digits match case-service's replica seed, so the two services describe the same people until SPEC-CASE-06 replaces that seed.
 
 ### Isolation matrix (`GET /growers/{id}` and search)
 | Example | Rule | User | Visible |
@@ -86,7 +101,7 @@
 | GRW-E06 | R3 | tm.in (Maharashtra + districts) | G1, G2 |
 | GRW-E07 | R3 | agro.in (ASSIGNED, Pune) | G1 |
 | GRW-E08 | R2 | retailer.in (501) | G1 |
-| GRW-E09 | R2 | retailer2.in (502) | G3 |
+| GRW-E09 | R2 | retailer2.in (502) | G2 (preferred), G3 (onboarded via) |
 | GRW-E10 | R4 | admin.in (no `grower:read`) | none |
 | GRW-E11 | R5 | every user above | `ScopeFilter` result = `PolicyEnforcer` result |
 
@@ -105,7 +120,7 @@
 | GRW-E29 | R15 | care.in | `displayName` exactly 120 chars | 201 (boundary) |
 | GRW-E30 | R16 | care.in | E21 retried with the same key and body | 200, `Idempotent-Replayed: true`, one row, one event |
 | GRW-E31 | R17 | care.in | same key, other phone | 409 `IDEMPOTENCY_KEY_REUSED` |
-| GRW-E32 | R18 | — | any registered grower | `ShardRouter.forId(growerId)` = `fmix64(phone_hmac) mod 64` of its country; directory row in that shard |
+| GRW-E32 | R18 | — | any registered grower | `ShardRouter.forId(growerId)` = the D1 shard of its phone HMAC and country; directory row in that shard |
 | GRW-E33 | R4 | admin.in (no `grower:create`) | register | 403 |
 
 ### Read and update
@@ -141,6 +156,18 @@
 | GRW-E83 | D3 | — | same E.164 number twice; two different numbers | equal HMACs (32 bytes); different HMACs; HMAC changes with the key |
 | GRW-E84 | D3 | — | encrypt then decrypt; encrypt the same number twice; decrypt with a tampered ciphertext or another key | original number; different ciphertexts (random nonce); rejected |
 | GRW-E85 | D3 | — | `+919876543210` | `phoneLast4 "3210"`; `toString()` of the value object never contains the number |
+
+### Schema
+| Example | Rule | Input | Expected |
+|---|---|---|---|
+| GRW-E90 | R50 | insert into `in_s05.grower` and `br_s05.grower` | ids decode to (IN 46, 5) and (BR 8, 5); ids increase within a shard |
+| GRW-E91 | R51 | second directory row with the same HMAC in `in_s05` | `phone_directory_pk` |
+| GRW-E92 | R52 | territory 2002 in an IN shard · partner of BR · `country_code 'BR'` in an IN shard · SELF with `user_id NULL` · ASSISTED with `onboarded_by_user_id NULL` · 31-byte HMAC · last 4 `'12a4'` | `grower_territory_fk` · `grower_partner_fk` · `grower_country_check` · `grower_onboarding_check` · `grower_onboarding_check` · `grower_phone_hmac_check` · `grower_phone_last4_check` |
+| GRW-E93 | R53 | link user 1 a second time | `grower_user_link_pk` |
+| GRW-E94 | R54 | app role: `CREATE TABLE` in a shard · `INSERT INTO ref.territory` · `DELETE FROM` grower / phone_directory / `dir.grower_user_link` · `UPDATE dir.grower_user_link` | permission denied |
+| GRW-E95 | R55 | every migrated shard | `in_sNN.outbox` listed in `pg_publication_tables` for `gc_outbox`; CDC role cannot read `grower` |
+| GRW-E96 | R56 | G1–G4 | `IdCodec.decode(id)` = (country of the seed row, D1 shard of HMAC(phone, dev key)); `phone_directory` row in the same shard; `phone_enc` decrypts to the phone with the dev key |
+| GRW-E97 | R57 | migrate twice | second run: 0 migrations executed |
 
 ### Platform
 | Example | Rule | Input | Expected |
@@ -198,5 +225,7 @@ Database `gc_grower`, owner/app role split, migrations as in `sharded-migration`
 | R10–R18 / E20–E33 | `GrowerRegistrationIT#registers`, `#rejected`, `#idempotency`; `GrowerPlacementTest#placementMatchesDecodedId` |
 | R20–R27 / E40–E49 | `GrowerUpdateIT#reads`, `#updates`, `#rejectedUpdates`; `GrowerViewTest#namesAreMaskedByClearance` |
 | R30–R32 / E60–E65 | `GrowerSearchIT#findsByPhone` |
+| D1 placement / E32 (unit part) | `GrowerPlacementTest#shardOfHmac` |
+| R50–R57 / E90–E97 | `GrowerSchemaMigrationIT` (nested by rule), `ShardMigrationConventionsTest` |
 | D3 / E80–E85 | `PhoneNumberTest#normalises`, `#rejects`, `#lastFourAndToString`; `PhoneProtectorTest#hmac`, `#encryption` |
 | R40–R43 / E70–E73 | `GrowerSecurityIT`, `IamPrincipalClientTest`, `InternalGrowerApiIT`, `ConfigurationHygieneTest` |
