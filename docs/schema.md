@@ -14,7 +14,7 @@ src/main/resources/db/grower/
 | Role | Rights |
 |---|---|
 | `gc_grower_owner` | Runs migrations (DDL). Production: only the pre-deploy migration Job has its credentials. |
-| `gc_grower_app` | Runtime. `SELECT` on `ref.*`; `SELECT, INSERT` on `dir.grower_user_link`; `SELECT, INSERT, UPDATE` on `grower` and `phone_directory` (**no DELETE**); `SELECT, INSERT, DELETE` on `grower_idempotency` and `outbox` (retention jobs). |
+| `gc_grower_app` | Runtime. `SELECT` on `ref.*`; `SELECT, INSERT` on `dir.grower_user_link`; `SELECT, INSERT, UPDATE` on `grower` and `phone_directory` (**no DELETE**); `SELECT, INSERT, DELETE` on `grower_idempotency` and `outbox` (append-only, **no UPDATE**; DELETE for retention jobs). |
 | `gc_cdc` | Debezium. `SELECT` on each shard's `outbox`; read/write `msg.cdc_heartbeat`. Nothing else. |
 
 **Important:** the databases give the app role full DML on every new table by default (`ALTER DEFAULT PRIVILEGES` in local-platform's `01-init.sh` and in `PostgresTestDatabase`). A restriction therefore has to be an explicit `REVOKE` in the migration; a narrower `GRANT` alone doesn't remove anything (found by GRW-E94).

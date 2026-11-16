@@ -41,9 +41,11 @@ class GrowerSchemaMigrationIT {
         owner = JdbcClient.create(db.ownerDataSource());
     }
 
+    private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
+
     static byte[] randomHmac() {
         var bytes = new byte[32];
-        new java.security.SecureRandom().nextBytes(bytes);
+        RANDOM.nextBytes(bytes);
         return bytes;
     }
 
@@ -60,13 +62,13 @@ class GrowerSchemaMigrationIT {
 
         static Stream<Arguments> shards() {
             return Stream.of(
-                    argumentSet("GRW-E90 IN shard 5", "in_s05", "IN", 1002L, 46),
-                    argumentSet("GRW-E90 BR shard 5", "br_s05", "BR", 2002L, 8));
+                    argumentSet("GRW-E90 IN shard 5", "in_s05", 1002L, 46),
+                    argumentSet("GRW-E90 BR shard 5", "br_s05", 2002L, 8));
         }
 
         @ParameterizedTest
         @MethodSource("shards")
-        void databaseGeneratedIdsDecodeToCountryAndShard(String schema, String country, long territory, int countryIx) {
+        void databaseGeneratedIdsDecodeToCountryAndShard(String schema, long territory, int countryIx) {
             var ids = new ArrayList<Long>();
             for (int i = 0; i < 3; i++) {
                 ids.add(insertGrowerWithOnboarder(schema, territory));
@@ -147,7 +149,7 @@ class GrowerSchemaMigrationIT {
 
         private static void insert(Row row) {
             var hmac = new byte[row.hmacBytes()];
-            new java.security.SecureRandom().nextBytes(hmac);
+            RANDOM.nextBytes(hmac);
             app.sql(BASE).param("country", row.country()).param("territory", row.territory()).param("userId", row.userId())
                     .param("hmac", hmac).param("last4", row.last4()).param("partner", row.partner())
                     .param("channel", row.channel()).param("onboardedBy", row.onboardedBy()).update();
@@ -164,7 +166,9 @@ class GrowerSchemaMigrationIT {
                     argumentSet("GRW-E94 delete growers", "DELETE FROM in_s05.grower"),
                     argumentSet("GRW-E94 delete directory rows", "DELETE FROM in_s05.phone_directory"),
                     argumentSet("GRW-E94 delete user links", "DELETE FROM dir.grower_user_link"),
-                    argumentSet("GRW-E94 update user links", "UPDATE dir.grower_user_link SET grower_id = 1"));
+                    argumentSet("GRW-E94 update user links", "UPDATE dir.grower_user_link SET grower_id = 1"),
+                    argumentSet("GRW-E94 update idempotency records", "UPDATE in_s05.grower_idempotency SET grower_id = 1"),
+                    argumentSet("GRW-E94 update outbox events", "UPDATE in_s05.outbox SET event_type = 'x'"));
         }
 
         @ParameterizedTest

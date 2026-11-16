@@ -24,11 +24,21 @@ public record MigrationProperties(
         int parallelism) {
 
     public MigrationProperties {
+        if (appRole == null || appRole.isBlank()) {
+            throw new IllegalArgumentException("gc.migration.app-role must be set (the runtime role that receives grants)");
+        }
         if (cdcRole == null || cdcRole.isBlank()) {
             cdcRole = "gc_cdc";
         }
         if (parallelism <= 0) {
             parallelism = 4;
         }
+    }
+
+    /** Never prints the owner password (a record's generated toString would). */
+    @Override
+    public String toString() {
+        return "MigrationProperties[enabled=%s, ownerUser=%s, ownerPassword=%s, appRole=%s, cdcRole=%s, devSeed=%s, parallelism=%d]"
+                .formatted(enabled, ownerUser, ownerPassword == null ? null : "****", appRole, cdcRole, devSeed, parallelism);
     }
 }

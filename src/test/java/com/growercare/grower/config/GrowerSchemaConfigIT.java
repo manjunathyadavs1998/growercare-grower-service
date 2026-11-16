@@ -74,6 +74,21 @@ class GrowerSchemaConfigIT {
         assertThat(props.parallelism()).isEqualTo(4);
     }
 
+    @ParameterizedTest(name = "app role {0} is rejected")
+    @org.junit.jupiter.params.provider.NullAndEmptySource
+    @org.junit.jupiter.params.provider.ValueSource(strings = " ")
+    void migrationPropertiesRequireTheAppRole(String appRole) {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> new MigrationProperties(true, "owner", "pw", appRole, null, false, 2))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("app-role");
+    }
+
+    @Test
+    void migrationPropertiesNeverPrintTheOwnerPassword() {
+        var props = new MigrationProperties(true, "gc_grower_owner", "s3cret-owner-pw", "app", null, false, 2);
+        assertThat(props.toString()).doesNotContain("s3cret-owner-pw").contains("ownerPassword=****", "gc_grower_owner");
+        assertThat(new MigrationProperties(true, "o", null, "app", null, false, 2).toString()).contains("ownerPassword=null");
+    }
+
     private static ObjectProvider<ShardedFlywayMigrator.Report> provider(ShardedFlywayMigrator.Report report) {
         return new ObjectProvider<>() {
             @Override

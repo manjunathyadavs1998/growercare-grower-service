@@ -65,7 +65,7 @@
 | GRW-R51 | a shard's `phone_directory` | the same `phone_hmac` is inserted twice | rejected by `phone_directory_pk` (R13 under concurrency) |
 | GRW-R52 | a grower row | territory or partner of another country, country other than the shard's, SELF without a user, ASSISTED without the onboarding user, malformed HMAC or last 4 | rejected by a named constraint |
 | GRW-R53 | `dir.grower_user_link` | the same user is linked twice | rejected by `grower_user_link_pk` (R12 under concurrency) |
-| GRW-R54 | the runtime (app) role | DDL; writes to `ref.*`; DELETE on `grower`, `phone_directory` or `dir.grower_user_link`; UPDATE of `dir.grower_user_link` | `permission denied` (least privilege) |
+| GRW-R54 | the runtime (app) role | DDL; writes to `ref.*`; DELETE on `grower`, `phone_directory` or `dir.grower_user_link`; UPDATE of `dir.grower_user_link`, `grower_idempotency` or `outbox` (append-only) | `permission denied` (least privilege) |
 | GRW-R55 | every shard schema | — | its `outbox` is in publication `gc_outbox`; the CDC role can read only the outbox tables and the heartbeat |
 | GRW-R56 | the dev seed (local and tests only) | — | each seed grower's id decodes to the D1 shard of its phone HMAC (dev key), and its directory row is in that shard |
 | GRW-R57 | an already migrated database | migration runs again | no migration executed |
@@ -164,7 +164,7 @@ Names, users, territories, partners and last-4 digits match case-service's repli
 | GRW-E91 | R51 | second directory row with the same HMAC in `in_s05` | `phone_directory_pk` |
 | GRW-E92 | R52 | territory 2002 in an IN shard · partner of BR · `country_code 'BR'` in an IN shard · SELF with `user_id NULL` · ASSISTED with `onboarded_by_user_id NULL` · 31-byte HMAC · last 4 `'12a4'` | `grower_territory_fk` · `grower_partner_fk` · `grower_country_check` · `grower_onboarding_check` · `grower_onboarding_check` · `grower_phone_hmac_check` · `grower_phone_last4_check` |
 | GRW-E93 | R53 | link user 1 a second time | `grower_user_link_pk` |
-| GRW-E94 | R54 | app role: `CREATE TABLE` in a shard · `INSERT INTO ref.territory` · `DELETE FROM` grower / phone_directory / `dir.grower_user_link` · `UPDATE dir.grower_user_link` | permission denied |
+| GRW-E94 | R54 | app role: `CREATE TABLE` in a shard · `INSERT INTO ref.territory` · `DELETE FROM` grower / phone_directory / `dir.grower_user_link` · `UPDATE` `dir.grower_user_link` / `grower_idempotency` / `outbox` | permission denied |
 | GRW-E95 | R55 | every migrated shard | `in_sNN.outbox` listed in `pg_publication_tables` for `gc_outbox`; CDC role cannot read `grower` |
 | GRW-E96 | R56 | G1–G4 | `IdCodec.decode(id)` = (country of the seed row, D1 shard of HMAC(phone, dev key)); `phone_directory` row in the same shard; `phone_enc` decrypts to the phone with the dev key |
 | GRW-E97 | R57 | migrate twice | second run: 0 migrations executed |

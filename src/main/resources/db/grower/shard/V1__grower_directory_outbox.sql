@@ -108,5 +108,7 @@ GRANT SELECT, INSERT, UPDATE ON ${shard_schema}.grower, ${shard_schema}.phone_di
 REVOKE DELETE, TRUNCATE ON ${shard_schema}.grower, ${shard_schema}.phone_directory FROM ${app_role};
 GRANT SELECT, INSERT, DELETE ON ${shard_schema}.grower_idempotency TO ${app_role};   -- retention job deletes old keys
 GRANT SELECT, INSERT, DELETE ON ${shard_schema}.outbox TO ${app_role};               -- housekeeping (deletes not streamed)
+-- Idempotency records and events are append-only: no UPDATE, no TRUNCATE.
+REVOKE UPDATE, TRUNCATE ON ${shard_schema}.grower_idempotency, ${shard_schema}.outbox FROM ${app_role};
 GRANT USAGE ON SEQUENCE ${shard_schema}.id_seq TO ${app_role};
 GRANT EXECUTE ON FUNCTION ${shard_schema}.next_id() TO ${app_role};
