@@ -123,7 +123,9 @@ class GrowerRegistrationIT extends GrowerApiTestBase {
                 argumentSet("GRW-E28 phone too short", "phone", "12345", "phone"),
                 argumentSet("GRW-E28 unsupported language", "preferredLanguage", "xx", "preferredLanguage"),
                 argumentSet("GRW-E28 malformed territory id", "territoryId", "abc", "territoryId"),
-                argumentSet("GRW-E28 malformed partner id", "preferredPartnerOrgId", "5x", "preferredPartnerOrgId"));
+                argumentSet("GRW-E28 malformed partner id", "preferredPartnerOrgId", "5x", "preferredPartnerOrgId"),
+                argumentSet("GRW-E28 territory id above Long.MAX_VALUE", "territoryId", "9999999999999999999", "territoryId"),
+                argumentSet("GRW-E28 partner id above Long.MAX_VALUE", "preferredPartnerOrgId", "9999999999999999999", "preferredPartnerOrgId"));
     }
 
     @ParameterizedTest

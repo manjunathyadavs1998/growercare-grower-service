@@ -42,6 +42,7 @@ class GrowerReadSearchIT extends GrowerApiTestBase {
                 argumentSet("GRW-E41 out of scope (care.br, IN grower)", CARE_BR, G1),
                 argumentSet("GRW-E41 unknown id", CARE_IN, "999"),
                 argumentSet("GRW-E41 malformed id", CARE_IN, "abc"),
+                argumentSet("GRW-E41 19-digit id above Long.MAX_VALUE", CARE_IN, "9999999999999999999"),
                 argumentSet("GRW-E41 id of an unknown country", CARE_IN, Long.toString(unknownCountry)));
     }
 

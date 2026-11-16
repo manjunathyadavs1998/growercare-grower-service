@@ -66,16 +66,32 @@ final class GrowerDtos {
         return value == null ? null : Long.toString(value);
     }
 
-    static Long optionalId(String value) {
-        return value == null ? null : Long.parseLong(value);
+    /**
+     * R15: a body id. The {@link #ID} pattern also admits 19-digit values above {@code Long.MAX_VALUE}, so overflow is a
+     * 400 on the field here, never a 500.
+     */
+    static long id(String raw, String field) {
+        try {
+            return Long.parseLong(raw);
+        } catch (NumberFormatException e) {
+            throw ValidationException.of(field, "must be a positive 64-bit id");
+        }
     }
 
-    /** R21: malformed path ids are indistinguishable from unknown ones. */
+    static Long optionalId(String raw, String field) {
+        return raw == null ? null : id(raw, field);
+    }
+
+    /** R21: malformed path ids (including 19-digit overflow) are indistinguishable from unknown ones. */
     static long growerIdOrNotFound(String raw) {
         if (raw == null || !raw.matches(ID)) {
             throw new NotFoundException("Grower");
         }
-        return Long.parseLong(raw);
+        try {
+            return Long.parseLong(raw);
+        } catch (NumberFormatException e) {
+            throw new NotFoundException("Grower");
+        }
     }
 
     static String etag(int version) {

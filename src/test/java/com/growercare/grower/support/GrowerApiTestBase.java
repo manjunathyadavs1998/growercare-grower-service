@@ -126,9 +126,13 @@ public abstract class GrowerApiTestBase {
         return body;
     }
 
+    /** A copy of {@code body} with key/value pairs set (a null value removes the key). */
     protected static Map<String, Object> with(Map<String, Object> body, Object... keyValues) {
+        if (keyValues.length % 2 != 0) {
+            throw new IllegalArgumentException("key/value pairs expected");
+        }
         var copy = new LinkedHashMap<>(body);
-        for (int i = 0; i < keyValues.length; i += 2) {
+        for (int i = 0; i + 1 < keyValues.length; i += 2) {
             if (keyValues[i + 1] == null) {
                 copy.remove((String) keyValues[i]);
             } else {

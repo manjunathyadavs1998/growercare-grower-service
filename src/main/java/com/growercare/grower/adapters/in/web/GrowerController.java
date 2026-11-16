@@ -41,8 +41,9 @@ class GrowerController {
 
     @PostMapping("/growers")
     ResponseEntity<GrowerView> register(@RequestHeader("Idempotency-Key") String idempotencyKey, @Valid @RequestBody RegisterRequest body) {
-        var result = commands.register(new NewGrowerCommand(Long.parseLong(body.territoryId()), body.displayName(), body.phone(),
-                body.preferredLanguage(), optionalId(body.preferredPartnerOrgId()), GrowerDtos.uuid(idempotencyKey, "Idempotency-Key")));
+        var result = commands.register(new NewGrowerCommand(GrowerDtos.id(body.territoryId(), "territoryId"), body.displayName(), body.phone(),
+                body.preferredLanguage(), optionalId(body.preferredPartnerOrgId(), "preferredPartnerOrgId"),
+                GrowerDtos.uuid(idempotencyKey, "Idempotency-Key")));
         var view = view(result.record());
         if (result.replayed()) {
             return ResponseEntity.ok().eTag(etag(view.version())).header("Idempotent-Replayed", "true").body(view);

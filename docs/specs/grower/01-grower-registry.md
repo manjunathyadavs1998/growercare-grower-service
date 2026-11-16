@@ -118,7 +118,7 @@ Names, users, territories, partners and last-4 digits match case-service's repli
 | GRW-E26 | R14 | care.in | territory 2002 (BR) | 404 |
 | GRW-E27 | R14 | care.in | `preferredPartnerOrgId` of a BR partner | 422 `grower.partner-invalid` |
 | GRW-E27a | R14 | retailer.in (IN partner) | territory 2002 (BR) | 404 (partners onboard only in their own country) |
-| GRW-E28 | R15 | care.in | `displayName` "" · 121 chars · phone `+55 11 91234 5678` for an IN territory · phone `12345` · language `xx` · no `Idempotency-Key` · `territoryId "abc"` | 400 `VALIDATION_FAILED`, `errors[].field` = displayName · displayName · phone · phone · preferredLanguage · Idempotency-Key · territoryId |
+| GRW-E28 | R15 | care.in | `displayName` "" · 121 chars · phone `+55 11 91234 5678` for an IN territory · phone `12345` · language `xx` · no `Idempotency-Key` · `territoryId "abc"` · `territoryId "9999999999999999999"` (above the 64-bit range) | 400 `VALIDATION_FAILED`, `errors[].field` = displayName · displayName · phone · phone · preferredLanguage · Idempotency-Key · territoryId · territoryId (never 500) |
 | GRW-E29 | R15 | care.in | `displayName` exactly 120 chars | 201 (boundary) |
 | GRW-E30 | R16 | care.in | E21 retried with the same key and body | 200, `Idempotent-Replayed: true`, one row, one event |
 | GRW-E31 | R17 | care.in | same key, other phone | 409 `IDEMPOTENCY_KEY_REUSED` |
@@ -129,7 +129,7 @@ Names, users, territories, partners and last-4 digits match case-service's repli
 | Example | Rule | Actor | Input | Expected |
 |---|---|---|---|---|
 | GRW-E40 | R20 | care.in | GET G1 | 200, `ETag "0"` |
-| GRW-E41 | R21 | care.br | GET G1 · GET `999` (unknown) · GET `abc` · GET id with unknown country bits | 404, identical bodies |
+| GRW-E41 | R21 | care.br | GET G1 · GET `999` (unknown) · GET `abc` · GET `9999999999999999999` (above the 64-bit range) · GET id with unknown country bits | 404, identical bodies (never 500) |
 | GRW-E42 | R22 | grower.in1 / agro.in → FULL; care.in / retailer.in → MASKED | GET G1 | "Ramesh Patil" vs "R***** P****"; `phoneLast4 "3210"`; no `phone` key in JSON |
 | GRW-E43 | R23 | care.in | PATCH G2 `preferredLanguage "hi"`, `If-Match "0"` | 200, `ETag "1"`, event `grower.updated {changedFields:["preferredLanguage"]}` |
 | GRW-E44 | R24 | care.in | PATCH without `If-Match` · with `"7"` | 428 · 412 `expectedVersion 0` |
