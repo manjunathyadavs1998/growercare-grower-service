@@ -1,6 +1,6 @@
 # SPEC-GRW-01: Grower registry (register, read, update, find by phone)
 - **Requirements:** GRW-1 (grower profile part), IAM-1 (assisted onboarding), ACC-1, ACC-3, ACC-11, PRV-5, ID-1/ID-3/ID-4/ID-8, convention 1–5
-- **Status:** Agreed (2026-11-16). Implemented: increment 0 (phone normalisation and protection, D3, E80–E85), increment 1 (schema, R50–R57, E90–E97), increment 2 (access and security: R1–R5 / E01–E11, R40–R42 at wiring level, R41 client)
+- **Status:** Agreed (2026-11-16). Implemented: increment 0 (phone normalisation and protection, D3, E80–E85), increment 1 (schema, R50–R57, E90–E97), increment 2 (access and security: R1–R5 / E01–E11, R40–R42 at wiring level, R41 client), increment 3a (register, read, find by phone: R10–R22, R30–R32, D9)
 - **Owner:** grower-service (repository `growercare-grower-service`, port 8084; 8083 is Kafka Connect locally)
 - **Follow-ups (separate specs):** SPEC-GRW-02 farms/plots and crops · SPEC-GRW-03 consents + OTP confirmation of assisted onboarding (PRV-1) · SPEC-GRW-04 audited phone unmask (ACC-3) · SPEC-CASE-06 case-service replica sync from `grower.*` events
 
@@ -14,6 +14,7 @@
 | D5 | **Phone is immutable in this spec.** Changing a number moves the directory entry across shards and needs OTP proof of the new number; that flow is SPEC-GRW-03 | Keeps every write in SPEC-GRW-01 single-shard |
 | D6 | **Dev seed:** growers get properly encoded ids (country IN = 46 / BR, the shard from D1). case-service keeps its own seeded replica (70001…) for its tests until SPEC-CASE-06 syncs the replica from events; `smoke.sh` then registers a grower here before raising a case | Seeded 70001-style ids do not decode to a shard |
 | D8 | **User link outside the shards:** "one grower per user" (R12) needs a lookup by `userId`, which does not route to a shard. `dir.grower_user_link(user_id PK, grower_id UNIQUE)` is written in the registering transaction; the app role may only SELECT and INSERT it. With one cluster per country this is one transaction; across clusters it becomes insert-link-first with a cleanup job (noted in `docs/schema.md`) | Keeps R12 race-free without a cross-shard scan |
+| D9 | **Idempotency keys outside the shards:** a key is stored in `dir.grower_idempotency` (key PK, caller, request hash, grower id), not in the grower's shard. The shard depends on the phone, so a key reused with a *different* phone would otherwise land in another shard, find nothing and register a second grower instead of answering 409 (found by GRW-E31). Same one-cluster-per-country caveat as D8 | R17 must hold whatever the body says |
 | D7 | **New permissions** `grower:create`, `grower:read`, `grower:update`, added to IAM roles by a migration in identity-access-service (same PR series) | Authorization stays in IAM grants (ACC-1) |
 
 ## 1. Behaviour (rules)
@@ -31,9 +32,9 @@
 |---|---|---|---|
 | GRW-R10 | GROWER with `grower:create`, no grower linked yet | registers self (`territoryId`, `displayName`, `phone`, `preferredLanguage`, optional `preferredPartnerOrgId`) | 201, `Location`, `ETag "0"`; `userId` = caller, `status ACTIVE`, `onboardingChannel SELF`; outbox `grower.registered` |
 | GRW-R11 | staff or partner with `grower:create` and the territory in scope | registers someone else (assisted, IAM-1) | 201, `userId null`, `status PENDING_CONSENT`, `onboardingChannel ASSISTED`, `onboardedByUserId` = caller, `onboardedViaOrgId` = caller's org (partners) ; outbox `grower.registered`. Becomes ACTIVE only through SPEC-GRW-03 (grower OTP consent) |
-| GRW-R12 | GROWER already linked to a grower | registers self again | 409 `grower.already-registered` |
-| GRW-R13 | phone already in the country's directory | register | 409 `grower.phone-exists`. The response **never** contains the other grower's id (no enumeration) |
-| GRW-R14 | territory unknown, inactive, or outside the caller's create scope; or `preferredPartnerOrgId` not an active partner in the same country | register | 404 `NOT_FOUND` for the territory (scope), 422 `grower.partner-invalid` for the partner |
+| GRW-R12 | GROWER already linked to a grower | registers self again | 409 `DUPLICATE` ("already registered"; the platform error catalogue has one 409 code for duplicates) |
+| GRW-R13 | phone already in the country's directory | register | 409 `DUPLICATE` ("phone already registered"). The response **never** contains the other grower's id (no enumeration) |
+| GRW-R14 | territory unknown, inactive, or outside the caller's create scope (staff: the grant's geography; growers and partners: their own home country only); or `preferredPartnerOrgId` not an active partner in the same country | register | 404 `NOT_FOUND` for the territory (scope), 422 `grower.partner-invalid` for the partner |
 | GRW-R15 | invalid input: blank or > 120-char `displayName`; phone that does not normalise to a valid E.164 number **for the territory's country**; unsupported `preferredLanguage`; malformed ids; missing or invalid `Idempotency-Key` | register | 400 `VALIDATION_FAILED` with `errors[].field` |
 | GRW-R16 | same `Idempotency-Key`, identical body | register retried | 200 with the original grower, `Idempotent-Replayed: true`; no second row or event |
 | GRW-R17 | same `Idempotency-Key`, different body | register | 409 `IDEMPOTENCY_KEY_REUSED` |
@@ -65,7 +66,7 @@
 | GRW-R51 | a shard's `phone_directory` | the same `phone_hmac` is inserted twice | rejected by `phone_directory_pk` (R13 under concurrency) |
 | GRW-R52 | a grower row | territory or partner of another country, country other than the shard's, SELF without a user, ASSISTED without the onboarding user, malformed HMAC or last 4 | rejected by a named constraint |
 | GRW-R53 | `dir.grower_user_link` | the same user is linked twice | rejected by `grower_user_link_pk` (R12 under concurrency) |
-| GRW-R54 | the runtime (app) role | DDL; writes to `ref.*`; DELETE on `grower`, `phone_directory` or `dir.grower_user_link`; UPDATE of `dir.grower_user_link`, `grower_idempotency` or `outbox` (append-only) | `permission denied` (least privilege) |
+| GRW-R54 | the runtime (app) role | DDL; writes to `ref.*`; DELETE on `grower`, `phone_directory` or `dir.grower_user_link`; UPDATE of `dir.grower_user_link`, `dir.grower_idempotency` or `outbox` (append-only) | `permission denied` (least privilege) |
 | GRW-R55 | every shard schema | — | its `outbox` is in publication `gc_outbox`; the CDC role can read only the outbox tables and the heartbeat |
 | GRW-R56 | the dev seed (local and tests only) | — | each seed grower's id decodes to the D1 shard of its phone HMAC (dev key), and its directory row is in that shard |
 | GRW-R57 | an already migrated database | migration runs again | no migration executed |
@@ -111,11 +112,12 @@ Names, users, territories, partners and last-4 digits match case-service's repli
 | GRW-E20 | R10 | new grower user (no grower) | territory 1002, "Anil Shinde", `+91 99887 76655`, `mr` | 201, ACTIVE, SELF, `userId` = caller, `phoneLast4 "6655"`, event `grower.registered` with ids only |
 | GRW-E21 | R11 | agro.in | territory 1002, phone `9988776644` (national format) | 201, PENDING_CONSENT, ASSISTED, `onboardedByUserId 102`, phone normalised to `+919988776644` |
 | GRW-E22 | R11 | retailer.in | territory 1002 | 201, `onboardedViaOrgId 501`; visible to retailer.in afterwards (R2) |
-| GRW-E23 | R12 | grower.in1 | register self | 409 `grower.already-registered` |
-| GRW-E24 | R13 | care.in | phone of G1 | 409 `grower.phone-exists`, body has no grower id |
+| GRW-E23 | R12 | grower.in1 | register self | 409 `DUPLICATE` |
+| GRW-E24 | R13 | care.in | phone of G1 | 409 `DUPLICATE`, body has no grower id |
 | GRW-E25 | R14 | tm.in | territory 1005 (outside Maharashtra) | 404 |
 | GRW-E26 | R14 | care.in | territory 2002 (BR) | 404 |
 | GRW-E27 | R14 | care.in | `preferredPartnerOrgId` of a BR partner | 422 `grower.partner-invalid` |
+| GRW-E27a | R14 | retailer.in (IN partner) | territory 2002 (BR) | 404 (partners onboard only in their own country) |
 | GRW-E28 | R15 | care.in | `displayName` "" · 121 chars · phone `+55 11 91234 5678` for an IN territory · phone `12345` · language `xx` · no `Idempotency-Key` · `territoryId "abc"` | 400 `VALIDATION_FAILED`, `errors[].field` = displayName · displayName · phone · phone · preferredLanguage · Idempotency-Key · territoryId |
 | GRW-E29 | R15 | care.in | `displayName` exactly 120 chars | 201 (boundary) |
 | GRW-E30 | R16 | care.in | E21 retried with the same key and body | 200, `Idempotent-Replayed: true`, one row, one event |
@@ -164,7 +166,7 @@ Names, users, territories, partners and last-4 digits match case-service's repli
 | GRW-E91 | R51 | second directory row with the same HMAC in `in_s05` | `phone_directory_pk` |
 | GRW-E92 | R52 | territory 2002 in an IN shard · partner of BR · `country_code 'BR'` in an IN shard · SELF with `user_id NULL` · ASSISTED with `onboarded_by_user_id NULL` · 31-byte HMAC · last 4 `'12a4'` | `grower_territory_fk` · `grower_partner_fk` · `grower_country_check` · `grower_onboarding_check` · `grower_onboarding_check` · `grower_phone_hmac_check` · `grower_phone_last4_check` |
 | GRW-E93 | R53 | link user 1 a second time | `grower_user_link_pk` |
-| GRW-E94 | R54 | app role: `CREATE TABLE` in a shard · `INSERT INTO ref.territory` · `DELETE FROM` grower / phone_directory / `dir.grower_user_link` · `UPDATE` `dir.grower_user_link` / `grower_idempotency` / `outbox` | permission denied |
+| GRW-E94 | R54 | app role: `CREATE TABLE` in a shard · `INSERT INTO ref.territory` · `DELETE FROM` grower / phone_directory / `dir.grower_user_link` · `UPDATE` `dir.grower_user_link` / `dir.grower_idempotency` / `outbox` | permission denied |
 | GRW-E95 | R55 | every migrated shard | `in_sNN.outbox` listed in `pg_publication_tables` for `gc_outbox`; CDC role cannot read `grower` |
 | GRW-E96 | R56 | G1–G4 | `IdCodec.decode(id)` = (country of the seed row, D1 shard of HMAC(phone, dev key)); `phone_directory` row in the same shard; `phone_enc` decrypts to the phone with the dev key |
 | GRW-E97 | R57 | migrate twice | second run: 0 migrations executed |
@@ -203,7 +205,8 @@ Database `gc_grower`, owner/app role split, migrations as in `sharded-migration`
 - **Per shard `<cc>_sNN`:**
   - `grower(grower_id DEFAULT next_id() PK, country_code, territory_id, user_id UNIQUE NULL, display_name, phone_hmac bytea(32) NOT NULL, phone_enc bytea, phone_key_id, phone_last4, preferred_language, preferred_partner_org_id, status, onboarding_channel, onboarded_by_user_id, onboarded_via_org_id, version, created_at, updated_at)`;
   - `phone_directory(phone_hmac PK, grower_id NOT NULL)`: same shard as the grower (D1); UNIQUE gives R13 under concurrency;
-  - `outbox`, `idempotency_key` (as case-service).
+  - `outbox` (as case-service).
+- **`dir.grower_idempotency`** (D9): registration idempotency keys; the app role may SELECT, INSERT and DELETE (retention), never UPDATE.
 - `user_id` uniqueness across shards: a self-registering grower's shard is chosen by phone, so R12 checks a **per-country** `ref`-level table `grower_user_link(user_id PK, grower_id)` written in the same transaction (one cluster per country locally; across clusters this becomes a two-step write — noted in `docs/schema.md`).
 - **Events** (outbox → Debezium → topic `grower.grower.events`, key = `growerId` string; contracts in `gc-event-contracts`):
   - `grower.registered {growerId, countryCode, territoryId, userId?, status, onboardingChannel}`;
@@ -222,9 +225,10 @@ Database `gc_grower`, owner/app role split, migrations as in `sharded-migration`
 | Rule / Example | Test |
 |---|---|
 | R1–R5 / E01–E11 | `GrowerAccessTest#visibleGrowers`, `#requireAnswers404OutsideScope`, `#expiredAndGlobalGrantsSeeNothing`, `#growerViewMapsScopesAndIgnoresBu`; `GrowerIsolationIT#sqlFilterAndEnforcerAgree` (E11, SQL over the seeded shards) |
-| R10–R18 / E20–E33 | `GrowerRegistrationIT#registers`, `#rejected`, `#idempotency`; `GrowerPlacementTest#placementMatchesDecodedId` |
-| R20–R27 / E40–E49 | `GrowerUpdateIT#reads`, `#updates`, `#rejectedUpdates`; `GrowerViewTest#namesAreMaskedByClearance` |
-| R30–R32 / E60–E65 | `GrowerSearchIT#findsByPhone` |
+| R10–R18 / E20–E33 | `GrowerRegistrationIT` (`GRW_E20…`, `#rejectedRegistrations`, `#invalidInputIs400WithTheField`, `GRW_E30_E31…`, `GRW_E30_aSelfRegistration…`, `GRW_E32…`); `GrowerRulesTest#requestHashIsStableAndSensitiveToEveryField`, `#supportedLanguages`; `GrowerPlacementTest` |
+| R20–R22 / E40–E42 | `GrowerReadSearchIT#GRW_E40…`, `#outOfScopeUnknownAndMalformedAreTheSame404`, `#namesAreMaskedByClearanceAndThePhoneNeverLeaves`; `GrowerRulesTest#namesAreMaskedWordByWord` |
+| R23–R27 / E43–E49 | increment 3b (`GrowerUpdateIT`) |
+| R30–R32 / E60–E65 | `GrowerReadSearchIT#findByPhone`, `#GRW_E60_anInvalidPhoneIs400`, `#GRW_E65_thePhoneIsNeverAcceptedInAUrl` |
 | D1 placement / E32 (unit part) | `GrowerPlacementTest#shardOfHmac` |
 | R50–R57 / E90–E97 | `GrowerSchemaMigrationIT` (nested by rule), `ShardMigrationConventionsTest` |
 | D3 / E80–E85 | `PhoneNumberTest#normalises`, `#rejects`, `#lastFourAndToString`; `PhoneProtectorTest#hmac`, `#encryption` |

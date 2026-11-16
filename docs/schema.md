@@ -5,8 +5,9 @@ Database `gc_grower`, with the owner/app role split and sharded migrations as in
 ```
 src/main/resources/db/grower/
 ├─ common/          V1 ref replicas + phone plans + shard map · V2 dir.grower_user_link, CDC heartbeat, publication
+│                   V3 dir.grower_idempotency (D9)
 ├─ dev-seed/        V1000 partner replicas, user links (local/tests only)
-├─ shard/           V1 next_id(), grower, phone_directory, grower_idempotency, outbox · V2 outbox → publication
+├─ shard/           V1 next_id(), grower, phone_directory, outbox (+ grower_idempotency, dropped by V3) · V2 outbox → publication
 └─ shard-dev-seed/  V1000 the four fixture growers, each kept only in its own shard (local/tests only)
 ```
 
@@ -14,7 +15,7 @@ src/main/resources/db/grower/
 | Role | Rights |
 |---|---|
 | `gc_grower_owner` | Runs migrations (DDL). Production: only the pre-deploy migration Job has its credentials. |
-| `gc_grower_app` | Runtime. `SELECT` on `ref.*`; `SELECT, INSERT` on `dir.grower_user_link`; `SELECT, INSERT, UPDATE` on `grower` and `phone_directory` (**no DELETE**); `SELECT, INSERT, DELETE` on `grower_idempotency` and `outbox` (append-only, **no UPDATE**; DELETE for retention jobs). |
+| `gc_grower_app` | Runtime. `SELECT` on `ref.*`; `SELECT, INSERT` on `dir.grower_user_link`; `SELECT, INSERT, UPDATE` on `grower` and `phone_directory` (**no DELETE**); `SELECT, INSERT, DELETE` on `dir.grower_idempotency` and `outbox` (append-only, **no UPDATE**; DELETE for retention jobs). |
 | `gc_cdc` | Debezium. `SELECT` on each shard's `outbox`; read/write `msg.cdc_heartbeat`. Nothing else. |
 
 **Important:** the databases give the app role full DML on every new table by default (`ALTER DEFAULT PRIVILEGES` in local-platform's `01-init.sh` and in `PostgresTestDatabase`). A restriction therefore has to be an explicit `REVOKE` in the migration; a narrower `GRANT` alone doesn't remove anything (found by GRW-E94).
@@ -32,12 +33,14 @@ src/main/resources/db/grower/
 
 **Limitation:** while a country has one database cluster, the link and the grower are written in one transaction. Once a country spans several clusters, this becomes insert-the-link-first plus a cleanup job for orphaned links.
 
+## 3b. `dir.grower_idempotency` (D9)
+`client_request_id` PK, caller, request hash (32 bytes), `grower_id` (decodes to the grower's shard). Registration keys live **outside** the shards: the shard depends on the phone, so a key reused with a different phone would otherwise land in another shard, find nothing and register a second grower (found by GRW-E31). Introduced by common V3; the unused per-shard `grower_idempotency` was dropped by shard V3 (expand → contract).
+
 ## 4. Per shard `<cc>_sNN` (64 per country)
 | Table | Key | Notes |
 |---|---|---|
 | `grower` | `grower_id` = `next_id()` (decodes to country + shard, R50) | `grower_country_check` pins the shard's country. Composite FKs to `ref.territory` and `ref.partner_org` (×2) keep territory and partners in the same country. `grower_onboarding_check`: SELF needs a user and no onboarder; ASSISTED needs the onboarding user. Phone stored only as `phone_hmac` (32 bytes), `phone_enc` + `phone_key_id`, and `phone_last4` (D3). `version` for `If-Match`. `user_id` UNIQUE. |
 | `phone_directory` | `phone_hmac` | FK to `grower` **in the same shard**: the shard is chosen as `unsigned(first 8 bytes of phone_hmac) mod 64` (D1), so register and find-by-phone are single-shard. The PK enforces R13 under concurrency. |
-| `grower_idempotency` | `client_request_id` | R16/R17. A retry carries the same phone, so it lands in the same shard. |
 | `outbox` | `event_id` | ADR-012; in publication `gc_outbox` (shard V2). Payloads carry **ids only**. |
 
 Indexes for the scope filters (R2/R3): `grower_territory_ix (territory_id, grower_id)`, plus partial indexes on `preferred_partner_org_id` and `onboarded_via_org_id`.

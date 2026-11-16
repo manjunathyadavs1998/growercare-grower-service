@@ -1,0 +1,66 @@
+package com.growercare.grower.application;
+
+import com.growercare.common.error.NotFoundException;
+import com.growercare.common.error.ValidationException;
+import com.growercare.grower.application.port.GrowerRepository;
+import com.growercare.grower.application.port.ReferenceData;
+import com.growercare.grower.domain.GrowerAccess;
+import com.growercare.grower.domain.GrowerPlacement;
+import com.growercare.grower.domain.GrowerRecord;
+import com.growercare.grower.domain.PhoneNumber;
+import com.growercare.grower.domain.PhoneProtector;
+import com.growercare.security.RequiresPermission;
+import com.growercare.security.web.CurrentPrincipal;
+import com.growercare.shard.ShardId;
+import com.growercare.shard.ShardRouter;
+import java.util.List;
+import org.springframework.stereotype.Service;
+
+/** Grower read use cases: by id (SPEC-GRW-01 R20/R21) and by phone (R30–R32). */
+@Service
+public class GrowerQueries {
+
+    private final ReferenceData ref;
+    private final GrowerRepository growers;
+    private final GrowerAccess access;
+    private final PhoneProtector phones;
+    private final ShardRouter router;
+
+    public GrowerQueries(ReferenceData ref, GrowerRepository growers, GrowerAccess access, PhoneProtector phones, ShardRouter router) {
+        this.ref = ref;
+        this.growers = growers;
+        this.access = access;
+        this.phones = phones;
+        this.router = router;
+    }
+
+    /** R20/R21: routed by decoding the id; unknown, foreign-country and out-of-scope ids are the same 404. */
+    @RequiresPermission(GrowerAccess.READ)
+    public GrowerRecord get(long growerId) {
+        var record = router.forId(growerId)
+                .flatMap(shard -> growers.findById(shard, growerId))
+                .orElseThrow(() -> new NotFoundException("Grower"));
+        access.require(CurrentPrincipal.require(), GrowerAccess.READ, record.access());
+        return record;
+    }
+
+    /**
+     * R30–R32: phone → HMAC → the one shard that can hold it. The country only selects the phone plan and the shard;
+     * a grower outside the caller's scope is reported exactly like an unregistered number (empty list).
+     */
+    @RequiresPermission(GrowerAccess.READ)
+    public List<GrowerRecord> findByPhone(String rawPhone, String countryCode) {
+        var plan = ref.phonePlan(countryCode).orElse(null);
+        if (plan == null) {
+            return List.of();
+        }
+        var phone = PhoneNumber.parse(rawPhone, plan)
+                .orElseThrow(() -> ValidationException.of("phone", "must be a valid phone number of " + countryCode));
+        var hmac = phones.hmac(phone);
+        var principal = CurrentPrincipal.require();
+        return growers.findByPhone(new ShardId(countryCode, GrowerPlacement.shardNo(hmac)), hmac)
+                .filter(g -> access.permits(principal, GrowerAccess.READ, g.access()))
+                .map(List::of)
+                .orElse(List.of());
+    }
+}

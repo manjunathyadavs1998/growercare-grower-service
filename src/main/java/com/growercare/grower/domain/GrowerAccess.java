@@ -26,7 +26,8 @@ public final class GrowerAccess {
     public static final String CREATE = "grower:create";
     public static final String READ = "grower:read";
     public static final String UPDATE = "grower:update";
-    static final String RESOURCE = "grower";
+    /** Same resource name as every other 404 here, so out-of-scope and unknown growers are indistinguishable (R21). */
+    static final String RESOURCE = "Grower";
 
     /** The access-relevant attributes of one grower. */
     public record Attributes(String countryCode, Long territoryId, Long userId, Long preferredPartnerOrgId, Long onboardedViaOrgId) {
@@ -48,6 +49,19 @@ public final class GrowerAccess {
 
     public boolean permits(GcPrincipal principal, String permission, Attributes grower) {
         return enforcer.permits(growerView(principal), permission, grower.toResourceScope());
+    }
+
+    /**
+     * R14: may the principal register a grower with these attributes? Staff are bound by their grant's geography;
+     * growers (OWN) and partners (ORG) carry no geography in their grant, so they register only in their home country.
+     */
+    public boolean permitsCreate(GcPrincipal principal, Attributes grower) {
+        var userType = principal.userType();
+        if ((userType == com.growercare.security.UserType.GROWER || userType == com.growercare.security.UserType.PARTNER)
+                && !grower.countryCode().equals(principal.homeCountry())) {
+            return false;
+        }
+        return permits(principal, CREATE, grower);
     }
 
     /** @throws com.growercare.common.error.NotFoundException (404) when the grower is outside the principal's scope */
