@@ -48,7 +48,7 @@ class GrowerIsolationIT {
     void sqlFilterAndEnforcerAgree(GcPrincipal principal) {
         var bySql = new HashSet<Long>();
         for (var shard : SeedGrowers.all().stream().map(SeedGrowers.Seed::shard).collect(Collectors.toSet())) {
-            var predicate = GrowerAccessScope.predicate(FILTER, principal, GrowerAccess.READ, shard);
+            var predicate = GrowerAccessScope.predicate(FILTER, principal, GrowerAccess.READ);
             bySql.addAll(app.sql("SELECT g.grower_id FROM %s.grower g WHERE %s".formatted(shard.schemaName(), predicate.sql()))
                     .params(predicate.params()).query(Long.class).list());
         }

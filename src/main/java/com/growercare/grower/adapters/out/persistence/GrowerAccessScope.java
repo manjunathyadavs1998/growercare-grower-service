@@ -3,7 +3,6 @@ package com.growercare.grower.adapters.out.persistence;
 import com.growercare.grower.domain.GrowerAccess;
 import com.growercare.security.GcPrincipal;
 import com.growercare.security.ScopeFilter;
-import com.growercare.shard.ShardId;
 
 /**
  * How the ABAC scope maps onto {@code <shard>.grower g} (SPEC-GRW-01 R1–R5; skill java-security-rbac):
@@ -28,9 +27,11 @@ public final class GrowerAccessScope {
 
     private GrowerAccessScope() { }
 
-    /** {@code AND}-able predicate restricting {@code g} to growers the principal may {@code permission}. */
-    public static ScopeFilter.SqlPredicate predicate(ScopeFilter filter, GcPrincipal principal, String permission, ShardId shard) {
-        java.util.Objects.requireNonNull(shard, "shard");   // columns are shard-local; the caller qualifies the table
+    /**
+     * {@code AND}-able predicate restricting {@code g} to growers the principal may {@code permission}. Every column is
+     * shard-local, so the same predicate serves any shard; the caller qualifies the table with the shard schema.
+     */
+    public static ScopeFilter.SqlPredicate predicate(ScopeFilter filter, GcPrincipal principal, String permission) {
         return filter.forPermission(GrowerAccess.growerView(principal), permission, COLUMNS);
     }
 }
