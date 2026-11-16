@@ -1,6 +1,6 @@
 # SPEC-GRW-01: Grower registry (register, read, update, find by phone)
 - **Requirements:** GRW-1 (grower profile part), IAM-1 (assisted onboarding), ACC-1, ACC-3, ACC-11, PRV-5, ID-1/ID-3/ID-4/ID-8, convention 1–5
-- **Status:** Draft
+- **Status:** Agreed (2026-11-16); increment 0 implemented: phone normalisation and protection (D3, E80–E85)
 - **Owner:** grower-service (new repository `growercare-grower-service`, port 8083)
 - **Follow-ups (separate specs):** SPEC-GRW-02 farms/plots and crops · SPEC-GRW-03 consents + OTP confirmation of assisted onboarding (PRV-1) · SPEC-GRW-04 audited phone unmask (ACC-3) · SPEC-CASE-06 case-service replica sync from `grower.*` events
 
