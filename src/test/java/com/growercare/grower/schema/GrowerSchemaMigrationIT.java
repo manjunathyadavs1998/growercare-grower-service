@@ -254,13 +254,13 @@ class GrowerSchemaMigrationIT {
 
         @ParameterizedTest(name = "GRW-E307 {0}")
         @org.junit.jupiter.params.provider.CsvSource(textBlock = """
-                G1 preferred by 501,  501, 110165911145454593, PREFERRED
-                G2 preferred by 502,  502, 110165911145445378, PREFERRED
-                G3 onboarded via 502, 502, 110165911145455619, ONBOARDED
+                G1 preferred by 501,  501, 110165911145454593
+                G2 preferred by 502,  502, 110165911145445378
+                G3 onboarded via 502, 502, 110165911145455619
                 """)
-        void seedGrowersAreInThePartnerIndex(String name, long org, long growerId, String relation) {
-            assertThat(owner.sql("SELECT count(*) FROM dir.partner_grower WHERE partner_org_id = ? AND grower_id = ? AND relation = ?")
-                    .params(org, growerId, relation).query(Long.class).single()).isEqualTo(1);
+        void seedGrowersAreInThePartnerIndex(String name, long org, long growerId) {
+            assertThat(owner.sql("SELECT count(*) FROM dir.partner_grower WHERE partner_org_id = ? AND grower_id = ?")
+                    .params(org, growerId).query(Long.class).single()).isEqualTo(1);
         }
 
         @ParameterizedTest

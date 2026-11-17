@@ -138,15 +138,14 @@ class JdbcGrowerRepository implements GrowerRepository {
     }
 
     @Override
-    public void indexPartner(long partnerOrgId, long growerId, String countryCode, PartnerRelation relation) {
+    public void indexPartner(long partnerOrgId, long growerId, String countryCode) {
         jdbc.sql(sql.get("grower-dir.indexPartner")).param("partnerOrgId", partnerOrgId).param("growerId", growerId)
-                .param("countryCode", countryCode).param("relation", relation.name()).update();
+                .param("countryCode", countryCode).update();
     }
 
     @Override
-    public void unindexPartner(long partnerOrgId, long growerId, PartnerRelation relation) {
-        jdbc.sql(sql.get("grower-dir.unindexPartner")).param("partnerOrgId", partnerOrgId).param("growerId", growerId)
-                .param("relation", relation.name()).update();
+    public void unindexPartner(long partnerOrgId, long growerId) {
+        jdbc.sql(sql.get("grower-dir.unindexPartner")).param("partnerOrgId", partnerOrgId).param("growerId", growerId).update();
     }
 
     @Override

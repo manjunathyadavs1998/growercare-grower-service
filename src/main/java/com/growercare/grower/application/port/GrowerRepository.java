@@ -68,12 +68,11 @@ public interface GrowerRepository {
     /** SPEC-GRW-06 R300: the grower linked to a GROWER user. */
     Optional<Long> growerOfUser(long userId);
 
-    /** SPEC-GRW-06 D3: who a partner is for a grower. */
-    enum PartnerRelation { ONBOARDED, PREFERRED }
+    /** SPEC-GRW-06 D3: the partner onboarded the grower or is its preferred partner (idempotent). */
+    void indexPartner(long partnerOrgId, long growerId, String countryCode);
 
-    void indexPartner(long partnerOrgId, long growerId, String countryCode, PartnerRelation relation);
-
-    void unindexPartner(long partnerOrgId, long growerId, PartnerRelation relation);
+    /** SPEC-GRW-06 R306: the partner is neither any more. */
+    void unindexPartner(long partnerOrgId, long growerId);
 
     /** A partner index row: newest first; the keyset of the next page is (createdAt, growerId) of the last row. */
     record PartnerGrower(long growerId, java.time.Instant createdAt) { }

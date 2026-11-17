@@ -36,7 +36,7 @@ src/main/resources/db/grower/
 **Limitation:** while a country has one database cluster, the link and the grower are written in one transaction. Once a country spans several clusters, this becomes insert-the-link-first plus a cleanup job for orphaned links.
 
 ## 3a. `dir.partner_grower` (SPEC-GRW-06 D3)
-`(partner_org_id, grower_id, relation ONBOARDED/PREFERRED)` PK, `country_code`, `created_at`; index `(partner_org_id, created_at DESC, grower_id DESC)` for the partner list. Written in the registering transaction and on preferred-partner changes; backfilled by shard V6 (dev seed: shard dev seed V1003). App role: SELECT, INSERT, DELETE.
+`(partner_org_id, grower_id)` PK (one row per partner and grower: onboarded or preferred), `country_code`, `created_at`; index `(partner_org_id, created_at DESC, grower_id DESC)` for the partner list. Written in the registering transaction and on preferred-partner changes; backfilled by shard V6 (dev seed: shard dev seed V1003). App role: SELECT, INSERT, DELETE.
 
 ## 3b. `dir.grower_idempotency` (D9)
 `client_request_id` PK, caller, request hash (32 bytes), `grower_id` (decodes to the grower's shard). Registration keys live **outside** the shards: the shard depends on the phone, so a key reused with a different phone would otherwise land in another shard, find nothing and register a second grower (found by GRW-E31). Introduced by common V3; the unused per-shard `grower_idempotency` was dropped by shard V3 (expand → contract).
