@@ -121,6 +121,9 @@ class GrowerAppSupportIT extends GrowerApiTestBase {
         patch(CARE_IN, growerId, "\"0\"", "{\"preferredPartnerOrgId\": \"502\"}").andExpect(status().isOk());
         org.assertj.core.api.Assertions.assertThat(allPartnerGrowers(RETAILER_IN)).doesNotContain(growerId);
         org.assertj.core.api.Assertions.assertThat(allPartnerGrowers(RETAILER2_IN)).contains(growerId);
+        patch(CARE_IN, growerId, "\"1\"", "{\"preferredPartnerOrgId\": \"501\"}").andExpect(status().isOk());     // and back
+        org.assertj.core.api.Assertions.assertThat(allPartnerGrowers(RETAILER2_IN)).doesNotContain(growerId);
+        org.assertj.core.api.Assertions.assertThat(allPartnerGrowers(RETAILER_IN)).contains(growerId);
     }
 
     @Test

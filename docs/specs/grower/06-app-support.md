@@ -33,7 +33,7 @@
 | GRW-E303 | R303 | grower.in1 | IN / `ta` · `XX` / en · IN / `kn` (a current version without its text) | 404 · 404 · 404 |
 | GRW-E304 | R304 | retailer.in (501) · retailer2.in (502) | `partner=mine` | G1 (preferred 501) and growers it onboarded · G2 and G3 |
 | GRW-E305 | R305 | care.in · grower.in1 | `partner=mine` | 403 · 403 |
-| GRW-E306 | R306 | care.in | change G1's preferred partner to 502, then back | retailer2.in's list gains G1, then loses it |
+| GRW-E306 | R306 | care.in | a grower preferring 501: change to 502, then back to 501 | retailer.in loses it and retailer2.in gains it; then the reverse |
 | GRW-E307 | R307 | dev seed | partner index | rows for G1 (501 PREFERRED), G2 (502 PREFERRED), G3 (502 ONBOARDED) |
 
 ## 3. API contract
@@ -44,7 +44,7 @@ GET /growers?partner=mine&cursor=                  200 {items: [Grower], nextCur
 ```
 
 ## 4. Data & events
-- Common migration: `ref.consent_notice.title`, `.body`; `dir.partner_grower` (PK `(partner_org_id, grower_id, relation)`, index `(partner_org_id, created_at DESC)`).
+- Common migration: `ref.consent_notice.title`, `.body`; `dir.partner_grower` (PK `(partner_org_id, grower_id, relation)`, index `(partner_org_id, created_at DESC, grower_id DESC)` (the keyset of the cursor)).
 - Shard migration: backfill `dir.partner_grower` from each shard's growers.
 - No new events.
 
