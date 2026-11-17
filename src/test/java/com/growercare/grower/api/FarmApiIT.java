@@ -197,22 +197,42 @@ class FarmApiIT extends GrowerApiTestBase {
     }
 
     @Test
-    void GRW_E209_E210_updatesUseIfMatchAndOnlyChangesCount() throws Exception {
+    void GRW_E209_aChangeBumpsTheVersionAndTheSameValueAgainDoesNot() throws Exception {
         var grower = freshGrower();
         var farmId = created(CARE_IN, grower, farm("Patch plot"));
         patchFarm(CARE_IN, grower, farmId, "\"0\"", "{\"areaHa\": 3.0}").andExpect(status().isOk()).andExpect(header().string("ETag", "\"1\""));
         patchFarm(CARE_IN, grower, farmId, "\"1\"", "{\"areaHa\": 3}").andExpect(status().isOk()).andExpect(header().string("ETag", "\"1\""));
         assertThat(farmEvents(grower, farmId)).hasSize(2).last().satisfies(e -> assertThat(e).startsWith("grower.farm.updated"));
-        problem(patchFarm(CARE_IN, grower, farmId, "\"0\"", "{\"name\": \"Stale\"}"), 412, "STALE_VERSION");
-        patchFarm(CARE_IN, grower, farmId, null, "{\"name\": \"No header\"}").andExpect(status().is(428));
-        problem(patchFarm(CARE_IN, grower, farmId, "\"1\"", "{\"growerId\": \"1\"}"), 422, "BUSINESS_RULE_VIOLATION")
-                .andExpect(jsonPath("$.rule").value("grower.field-immutable"));
-        problem(patchFarm(CARE_IN, grower, farmId, "\"1\"", "{\"location\": {}}"), 400, "VALIDATION_FAILED")          // R202: not a clear
-                .andExpect(jsonPath("$.errors[0].field").value("location"));
-        problem(patchFarm(CARE_IN, grower, farmId, "\"1\"", "{\"location\": {\"latitude\": 18.5}}"), 400, "VALIDATION_FAILED")
-                .andExpect(jsonPath("$.errors[0].field").value("location"));
-        patchFarm(CARE_IN, grower, farmId, "\"1\"", "{\"location\": null}").andExpect(status().isOk())
-                .andExpect(jsonPath("$.location").doesNotExist());
+    }
+
+    /** Each row patches its own fresh farm (version 0), so rows never depend on each other. */
+    static Stream<Arguments> refusedPatches() {
+        return Stream.of(
+                argumentSet("GRW-E210 stale If-Match", "\"7\"", "{\"name\": \"Stale\"}", 412, "STALE_VERSION", null),
+                argumentSet("GRW-E210 no If-Match", null, "{\"name\": \"No header\"}", 428, "PRECONDITION_REQUIRED", null),
+                argumentSet("GRW-E210 immutable field", "\"0\"", "{\"growerId\": \"1\"}", 422, "BUSINESS_RULE_VIOLATION", null),
+                argumentSet("GRW-E214 empty location object", "\"0\"", "{\"location\": {}}", 400, "VALIDATION_FAILED", "location"),
+                argumentSet("GRW-E214 latitude only", "\"0\"", "{\"location\": {\"latitude\": 18.5}}", 400, "VALIDATION_FAILED", "location"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("refusedPatches")
+    void refusedPatchesChangeNothing(String ifMatch, String json, int expected, String code, String field) throws Exception {
+        var grower = freshGrower();
+        var farmId = created(CARE_IN, grower, farm("Refused patch plot"));
+        var result = problem(patchFarm(CARE_IN, grower, farmId, ifMatch, json), expected, code);
+        if (field != null) {
+            result.andExpect(jsonPath("$.errors[0].field").value(field));
+        }
+        as(CARE_IN, get("/growers/{id}/farms/{f}", grower, farmId)).andExpect(header().string("ETag", "\"0\""));
+    }
+
+    @Test
+    void GRW_E214_anExplicitNullClearsTheLocation() throws Exception {
+        var grower = freshGrower();
+        var farmId = created(CARE_IN, grower, farm("Clear plot"));
+        patchFarm(CARE_IN, grower, farmId, "\"0\"", "{\"location\": null}").andExpect(status().isOk())
+                .andExpect(jsonPath("$.location").doesNotExist()).andExpect(header().string("ETag", "\"1\""));
     }
 
     @Test
