@@ -315,6 +315,48 @@
         },
         "type" : "object"
       },
+      "NoticePage" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/NoticeView"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "NoticeView" : {
+        "properties" : {
+          "body" : {
+            "type" : "string"
+          },
+          "purpose" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "PartnerGrowerPage" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/GrowerView"
+            },
+            "type" : "array"
+          },
+          "nextCursor" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "RegisterRequest" : {
         "properties" : {
           "displayName" : {
@@ -417,7 +459,71 @@
   },
   "openapi" : "3.1.0",
   "paths" : {
+    "/consent-notices" : {
+      "get" : {
+        "operationId" : "notices",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "country",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "language",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NoticePage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "consent-controller" ]
+      }
+    },
     "/growers" : {
+      "get" : {
+        "operationId" : "partnerGrowers",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "partner",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PartnerGrowerPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "grower-controller" ]
+      },
       "post" : {
         "operationId" : "register",
         "parameters" : [ {
@@ -438,6 +544,24 @@
           },
           "required" : true
         },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GrowerView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "grower-controller" ]
+      }
+    },
+    "/growers/me" : {
+      "get" : {
+        "operationId" : "me",
         "responses" : {
           "200" : {
             "content" : {

@@ -122,6 +122,13 @@ public class GrowerCommands {
                 if (self) {
                     growers.linkUser(principal.userId(), id, country);
                 }
+                // SPEC-GRW-06 R306: the partner index in the same transaction
+                if (viaOrg != null) {
+                    growers.indexPartner(viaOrg, id, country, GrowerRepository.PartnerRelation.ONBOARDED);
+                }
+                if (cmd.preferredPartnerOrgId() != null) {
+                    growers.indexPartner(cmd.preferredPartnerOrgId(), id, country, GrowerRepository.PartnerRelation.PREFERRED);
+                }
                 if (!growers.insertIdempotency(cmd.idempotencyKey(), principal.userId(), hash, id)) {
                     status.setRollbackOnly();          // another request with the same key won the race
                     return null;
@@ -211,6 +218,14 @@ public class GrowerCommands {
         return tx.execute(status -> {
             int version = growers.updateProfile(shard, growerId, expectedVersion, row)
                     .orElseThrow(() -> new StaleVersionException("Grower", expectedVersion));
+            if (changed.contains("preferredPartnerOrgId")) {                                           // SPEC-GRW-06 R306
+                if (current.preferredPartnerOrgId() != null) {
+                    growers.unindexPartner(current.preferredPartnerOrgId(), growerId, GrowerRepository.PartnerRelation.PREFERRED);
+                }
+                if (partner != null) {
+                    growers.indexPartner(partner, growerId, current.countryCode(), GrowerRepository.PartnerRelation.PREFERRED);
+                }
+            }
             var payload = new LinkedHashMap<String, Object>();
             payload.put("growerId", Long.toString(growerId));
             payload.put("version", version);

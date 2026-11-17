@@ -123,6 +123,35 @@ class JdbcGrowerRepository implements GrowerRepository {
                 .query(UUID.class).optional().isPresent();
     }
 
+    @Override
+    public Optional<Long> growerOfUser(long userId) {
+        return jdbc.sql(sql.get("grower-dir.growerOfUser")).param("userId", userId).query(Long.class).optional();
+    }
+
+    @Override
+    public void indexPartner(long partnerOrgId, long growerId, String countryCode, PartnerRelation relation) {
+        jdbc.sql(sql.get("grower-dir.indexPartner")).param("partnerOrgId", partnerOrgId).param("growerId", growerId)
+                .param("countryCode", countryCode).param("relation", relation.name()).update();
+    }
+
+    @Override
+    public void unindexPartner(long partnerOrgId, long growerId, PartnerRelation relation) {
+        jdbc.sql(sql.get("grower-dir.unindexPartner")).param("partnerOrgId", partnerOrgId).param("growerId", growerId)
+                .param("relation", relation.name()).update();
+    }
+
+    @Override
+    public java.util.List<PartnerGrower> partnerGrowers(long partnerOrgId, PartnerGrower after, int limit) {
+        return jdbc.sql(sql.get("grower-dir.partnerGrowers"))
+                .param("partnerOrgId", partnerOrgId)
+                .param("afterCreatedAt", after == null ? null : java.time.OffsetDateTime.ofInstant(after.createdAt(), java.time.ZoneOffset.UTC),
+                        java.sql.Types.TIMESTAMP_WITH_TIMEZONE)
+                .param("afterGrowerId", after == null ? null : after.growerId(), java.sql.Types.BIGINT)
+                .param("limit", limit)
+                .query((rs, n) -> new PartnerGrower(rs.getLong("grower_id"), rs.getTimestamp("created_at").toInstant()))
+                .list();
+    }
+
     private static GrowerRecord grower(ResultSet rs, int row) throws SQLException {
         return new GrowerRecord(
                 rs.getLong("grower_id"),

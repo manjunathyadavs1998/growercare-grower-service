@@ -24,3 +24,10 @@ SELECT n.version
 -- SPEC-GRW-02 D4: which crop codes exist.
 -- name: knownCrops
 SELECT c.crop_code FROM ref.crop c WHERE c.crop_code = ANY(:codes::varchar[])
+
+-- SPEC-GRW-06 R302: the current notice per purpose for a country and language, with its text.
+-- name: currentNotices
+SELECT DISTINCT ON (n.purpose) n.purpose, n.version, n.title, n.body
+  FROM ref.consent_notice n
+ WHERE n.country_code = :countryCode AND n.language = :language AND n.effective_from <= :now
+ ORDER BY n.purpose, n.effective_from DESC

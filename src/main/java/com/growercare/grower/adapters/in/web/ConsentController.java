@@ -82,6 +82,18 @@ class ConsentController {
         return ResponseEntity.ok().eTag(etag(view.version())).body(view);
     }
 
+    record NoticeView(String purpose, String version, String title, String body) { }
+
+    record NoticePage(List<NoticeView> items) { }
+
+    /** SPEC-GRW-06 R302: what the grower is asked to agree to, in their language. */
+    @GetMapping("/consent-notices")
+    NoticePage notices(@org.springframework.web.bind.annotation.RequestParam String country,
+                       @org.springframework.web.bind.annotation.RequestParam String language) {
+        return new NoticePage(queries.notices(country, language).stream()
+                .map(n -> new NoticeView(n.purpose(), n.version(), n.title(), n.body())).toList());
+    }
+
     @GetMapping("/growers/{growerId}/consents")
     ConsentPage consents(@PathVariable String growerId) {
         return new ConsentPage(queries.current(growerIdOrNotFound(growerId)).stream().map(ConsentView::of).toList());

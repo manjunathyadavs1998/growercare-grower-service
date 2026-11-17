@@ -28,12 +28,15 @@ src/main/resources/db/grower/
 | `partner_org` | `partner_org_id`; UNIQUE (`partner_org_id`, `country_code`) | Same pattern for preferred and onboarding partners |
 | `shard` | (`country_code`, `shard_no`) | 64 rows per active country; `schema_name` = `<cc>_sNN` (CHECK) |
 | `crop` | `crop_code` | SPEC-GRW-02 D4 (common V5): the Phase 1 crop list (11 codes); read-only for the app role. Later from catalog-registry. |
-| `consent_notice` | (`country_code`, `purpose`, `language`, `version`) | SPEC-GRW-03 D8 (common V4): the current version is the latest `effective_from` not in the future. Read-only for the app role. |
+| `consent_notice` | (`country_code`, `purpose`, `language`, `version`) | `title` and `body` since common V6 (SPEC-GRW-06 D2; texts from legal, dev seed V1002 has placeholders). SPEC-GRW-03 D8 (common V4): the current version is the latest `effective_from` not in the future. Read-only for the app role. |
 
 ## 3. `dir.grower_user_link` (D8)
 `user_id` PK, `grower_id` UNIQUE, `country_code`. Enforces "one grower per user" (R12) without a cross-shard scan, because a lookup by user doesn't route to a shard. It's written in the registering transaction, and the application never updates or deletes it.
 
 **Limitation:** while a country has one database cluster, the link and the grower are written in one transaction. Once a country spans several clusters, this becomes insert-the-link-first plus a cleanup job for orphaned links.
+
+## 3a. `dir.partner_grower` (SPEC-GRW-06 D3)
+`(partner_org_id, grower_id, relation ONBOARDED/PREFERRED)` PK, `country_code`, `created_at`; index `(partner_org_id, created_at DESC, grower_id DESC)` for the partner list. Written in the registering transaction and on preferred-partner changes; backfilled by shard V6 (dev seed: shard dev seed V1003). App role: SELECT, INSERT, DELETE.
 
 ## 3b. `dir.grower_idempotency` (D9)
 `client_request_id` PK, caller, request hash (32 bytes), `grower_id` (decodes to the grower's shard). Registration keys live **outside** the shards: the shard depends on the phone, so a key reused with a different phone would otherwise land in another shard, find nothing and register a second grower (found by GRW-E31). Introduced by common V3; the unused per-shard `grower_idempotency` was dropped by shard V3 (expand → contract).
