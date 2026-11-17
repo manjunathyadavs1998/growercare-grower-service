@@ -168,7 +168,11 @@ class GrowerSchemaMigrationIT {
                     argumentSet("GRW-E94 delete user links", "DELETE FROM dir.grower_user_link"),
                     argumentSet("GRW-E94 update user links", "UPDATE dir.grower_user_link SET grower_id = 1"),
                     argumentSet("GRW-E94 update idempotency records", "UPDATE dir.grower_idempotency SET grower_id = 1"),
-                    argumentSet("GRW-E94 update outbox events", "UPDATE in_s05.outbox SET event_type = 'x'"));
+                    argumentSet("GRW-E94 update outbox events", "UPDATE in_s05.outbox SET event_type = 'x'"),
+                    argumentSet("GRW-E130 update consent rows", "UPDATE in_s05.grower_consent SET granted = false"),
+                    argumentSet("GRW-E130 delete consent rows", "DELETE FROM in_s05.grower_consent"),
+                    argumentSet("GRW-E130 delete verifications", "DELETE FROM in_s05.grower_verification"),
+                    argumentSet("GRW-E130 change consent notices", "UPDATE ref.consent_notice SET version = 'x'"));
         }
 
         @ParameterizedTest
@@ -227,6 +231,25 @@ class GrowerSchemaMigrationIT {
                     .isEqualTo(phone);
             assertThat(row.get("phone_last4")).isEqualTo(number.lastFour());
             assertThat(HexFormat.of().formatHex(hmac)).hasSize(64);
+        }
+
+        static Stream<Arguments> consents() {
+            return Stream.of(
+                    argumentSet("GRW-E132 G1 active with SERVICE consent", "in_s39", 110165911145454593L, "ACTIVE", "SERVICE:true:in-2026-11:SELF"),
+                    argumentSet("GRW-E132 G2 active with SERVICE consent", "in_s30", 110165911145445378L, "ACTIVE", "SERVICE:true:in-2026-11:SELF"),
+                    argumentSet("GRW-E132 G4 active with SERVICE consent", "br_s41", 110165911142966276L, "ACTIVE", "SERVICE:true:br-2026-11:SELF"),
+                    argumentSet("GRW-E132 G3 pending without consent", "in_s40", 110165911145455619L, "PENDING_CONSENT", ""));
+        }
+
+        @ParameterizedTest
+        @MethodSource("consents")
+        void seedGrowersHaveTheirStatusAndConsents(String schema, long growerId, String status, String consent) {
+            assertThat(owner.sql("SELECT status FROM %s.grower WHERE grower_id = ?".formatted(schema)).param(growerId)
+                    .query(String.class).single()).isEqualTo(status);
+            var rows = owner.sql("""
+                    SELECT string_agg(purpose || ':' || granted || ':' || notice_version || ':' || channel, ',')
+                      FROM %s.grower_consent WHERE grower_id = ?""".formatted(schema)).param(growerId).query(String.class).optional();
+            assertThat(rows.orElse("")).isEqualTo(consent);
         }
     }
 }

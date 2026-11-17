@@ -12,3 +12,11 @@ SELECT calling_code, national_pattern FROM ref.country WHERE country_code = :cou
 
 -- name: partner
 SELECT partner_org_id, country_code, status FROM ref.partner_org WHERE partner_org_id = :partnerOrgId
+
+-- SPEC-GRW-03 D8: the current notice version for a country, purpose and language.
+-- name: currentNotice
+SELECT n.version
+  FROM ref.consent_notice n
+ WHERE n.country_code = :countryCode AND n.purpose = :purpose AND n.language = :language AND n.effective_from <= :now
+ ORDER BY n.effective_from DESC
+ LIMIT 1

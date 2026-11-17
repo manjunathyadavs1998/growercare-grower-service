@@ -34,14 +34,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 class GrowerRegistrationIT extends GrowerApiTestBase {
 
     @Test
-    void GRW_E20_aGrowerRegistersThemselvesAndIsActive() throws Exception {
+    void GRW_E20_GRW_E100_aGrowerRegistersThemselvesAndAwaitsConsent() throws Exception {
         var user = newGrowerUser();
         var body = with(assisted(), "displayName", "Anil Shinde");
         var json = register(user, body, UUID.randomUUID())
                 .andExpect(status().isCreated())
                 .andExpect(header().string("ETag", "\"0\""))
                 .andExpect(header().exists("Location"))
-                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.status").value("PENDING_CONSENT"))    // SPEC-GRW-03 R100
                 .andExpect(jsonPath("$.onboardingChannel").value("SELF"))
                 .andExpect(jsonPath("$.userId").value(Long.toString(user.userId())))
                 .andExpect(jsonPath("$.countryCode").value("IN"))

@@ -21,4 +21,7 @@ public interface ReferenceData {
     Optional<PhonePlan> phonePlan(String countryCode);
 
     Optional<Partner> partner(long partnerOrgId);
+
+    /** SPEC-GRW-03 D8: the current consent notice version (latest effective, not in the future). */
+    Optional<String> currentNotice(String countryCode, String purpose, String language, java.time.Instant now);
 }

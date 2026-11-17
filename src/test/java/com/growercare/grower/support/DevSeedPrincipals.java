@@ -11,15 +11,15 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * The dev-seed users as identity-access-service resolves them, limited to the grower permissions (IAM V7,
- * SPEC-GRW-01 D7) plus the grants' real scopes (IAM V1000). Same users as case-service's fixture.
+ * The dev-seed users as identity-access-service resolves them, limited to the grower permissions (IAM V7/V8,
+ * SPEC-GRW-01 D7, SPEC-GRW-03 D7) plus the grants' real scopes (IAM V1000). Same users as case-service's fixture.
  */
 public final class DevSeedPrincipals {
 
     private DevSeedPrincipals() { }
 
-    static final Set<String> ALL_GROWER = Set.of("grower:create", "grower:read", "grower:update");
-    static final Set<String> CREATE_READ = Set.of("grower:create", "grower:read");
+    static final Set<String> ALL_GROWER = Set.of("grower:consent", "grower:create", "grower:read", "grower:update");
+    static final Set<String> CREATE_READ = Set.of("grower:consent", "grower:create", "grower:read");
 
     public static final GcPrincipal GROWER_IN1 = grower(1, TestJwts.GROWER_IN1, "IN");
     public static final GcPrincipal GROWER_IN2 = grower(2, TestJwts.GROWER_IN2, "IN");

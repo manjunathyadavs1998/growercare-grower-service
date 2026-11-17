@@ -1,6 +1,75 @@
 {
   "components" : {
     "schemas" : {
+      "ConfirmRequest" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "consents" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ConsentChoiceRequest"
+            },
+            "type" : "array"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "noticeVersion" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ConsentChoiceRequest" : {
+        "properties" : {
+          "granted" : {
+            "type" : "boolean"
+          },
+          "purpose" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ConsentPage" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ConsentView"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "ConsentView" : {
+        "properties" : {
+          "channel" : {
+            "type" : "string"
+          },
+          "granted" : {
+            "type" : "boolean"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "noticeVersion" : {
+            "type" : "string"
+          },
+          "purpose" : {
+            "type" : "string"
+          },
+          "recordedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "recordedByUserId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "GrowerPage" : {
         "properties" : {
           "items" : {
@@ -224,6 +293,46 @@
         },
         "required" : [ "countryCode", "phone" ],
         "type" : "object"
+      },
+      "SetConsentRequest" : {
+        "properties" : {
+          "granted" : {
+            "type" : "boolean"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "noticeVersion" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "StartRequest" : {
+        "properties" : {
+          "purpose" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "VerificationView" : {
+        "properties" : {
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "phoneLast4" : {
+            "type" : "string"
+          },
+          "purpose" : {
+            "type" : "string"
+          },
+          "verificationId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
       }
     },
     "securitySchemes" : {
@@ -370,6 +479,154 @@
           }
         },
         "tags" : [ "grower-controller" ]
+      }
+    },
+    "/growers/{growerId}/consents" : {
+      "get" : {
+        "operationId" : "consents",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsentPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "consent-controller" ]
+      }
+    },
+    "/growers/{growerId}/consents/{purpose}" : {
+      "put" : {
+        "operationId" : "setConsent",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "purpose",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SetConsentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsentView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "consent-controller" ]
+      }
+    },
+    "/growers/{growerId}/verifications" : {
+      "post" : {
+        "operationId" : "start",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/StartRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VerificationView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "consent-controller" ]
+      }
+    },
+    "/growers/{growerId}/verifications/{verificationId}/confirm" : {
+      "post" : {
+        "operationId" : "confirm",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "verificationId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConfirmRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GrowerView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "consent-controller" ]
       }
     },
     "/internal/growers/{growerId}" : {

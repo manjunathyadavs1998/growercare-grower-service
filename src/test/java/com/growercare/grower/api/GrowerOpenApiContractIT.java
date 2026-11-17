@@ -30,7 +30,12 @@ class GrowerOpenApiContractIT extends GrowerApiTestBase {
                 argumentSet("PLAT-E21 GET /growers/{growerId}", "/growers/{growerId}", "get"),
                 argumentSet("PLAT-E21 PATCH /growers/{growerId}", "/growers/{growerId}", "patch"),
                 argumentSet("PLAT-E21 POST /growers/search", "/growers/search", "post"),
-                argumentSet("PLAT-E21 GET /internal/growers/{growerId}", "/internal/growers/{growerId}", "get"));
+                argumentSet("PLAT-E21 GET /internal/growers/{growerId}", "/internal/growers/{growerId}", "get"),
+                argumentSet("PLAT-E21 POST /growers/{growerId}/verifications", "/growers/{growerId}/verifications", "post"),
+                argumentSet("PLAT-E21 POST …/verifications/{verificationId}/confirm",
+                        "/growers/{growerId}/verifications/{verificationId}/confirm", "post"),
+                argumentSet("PLAT-E21 GET /growers/{growerId}/consents", "/growers/{growerId}/consents", "get"),
+                argumentSet("PLAT-E21 PUT /growers/{growerId}/consents/{purpose}", "/growers/{growerId}/consents/{purpose}", "put"));
     }
 
     @ParameterizedTest

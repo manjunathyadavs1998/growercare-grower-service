@@ -66,6 +66,30 @@ public final class PhoneProtector {
         }
     }
 
+    /**
+     * SPEC-GRW-03 D3: a one-time code is stored only as {@code HMAC-SHA-256(phone HMAC key, "otp:" ‖ verificationId ‖ ":" ‖ code)}.
+     * Binding the verification id means a stored hash cannot be replayed against another verification.
+     */
+    public byte[] otpHmac(java.util.UUID verificationId, String code) {
+        try {
+            var mac = Mac.getInstance("HmacSHA256");
+            mac.init(hmacKey);
+            return mac.doFinal(("otp:" + verificationId + ":" + code).getBytes(StandardCharsets.US_ASCII));
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("HMAC-SHA-256 unavailable", e);
+        }
+    }
+
+    /** SPEC-GRW-03 D3: 6 digits from {@link SecureRandom}, leading zeros kept. */
+    public String newOtpCode() {
+        return "%06d".formatted(random.nextInt(1_000_000));
+    }
+
+    /** Constant-time comparison of a submitted code with the stored HMAC (D3). */
+    public boolean otpMatches(java.util.UUID verificationId, String code, byte[] storedHmac) {
+        return java.security.MessageDigest.isEqual(otpHmac(verificationId, code), storedHmac);
+    }
+
     public Sealed encrypt(PhoneNumber phone) {
         var nonce = new byte[NONCE_BYTES];
         random.nextBytes(nonce);

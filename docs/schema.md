@@ -27,6 +27,7 @@ src/main/resources/db/grower/
 | `territory` | `territory_id`; UNIQUE (`territory_id`, `country_code`) | Composite key so a grower's territory can be tied to the grower's country by FK |
 | `partner_org` | `partner_org_id`; UNIQUE (`partner_org_id`, `country_code`) | Same pattern for preferred and onboarding partners |
 | `shard` | (`country_code`, `shard_no`) | 64 rows per active country; `schema_name` = `<cc>_sNN` (CHECK) |
+| `consent_notice` | (`country_code`, `purpose`, `language`, `version`) | SPEC-GRW-03 D8 (common V4): the current version is the latest `effective_from` not in the future. Read-only for the app role. |
 
 ## 3. `dir.grower_user_link` (D8)
 `user_id` PK, `grower_id` UNIQUE, `country_code`. Enforces "one grower per user" (R12) without a cross-shard scan, because a lookup by user doesn't route to a shard. It's written in the registering transaction, and the application never updates or deletes it.
@@ -41,9 +42,11 @@ src/main/resources/db/grower/
 |---|---|---|
 | `grower` | `grower_id` = `next_id()` (decodes to country + shard, R50) | `grower_country_check` pins the shard's country. Composite FKs to `ref.territory` and `ref.partner_org` (×2) keep territory and partners in the same country. `grower_onboarding_check`: SELF needs a user and no onboarder; ASSISTED needs the onboarding user. Phone stored only as `phone_hmac` (32 bytes), `phone_enc` + `phone_key_id`, and `phone_last4` (D3). `version` for `If-Match`. `user_id` UNIQUE. |
 | `phone_directory` | `phone_hmac` | FK to `grower` **in the same shard**: the shard is chosen as `unsigned(first 8 bytes of phone_hmac) mod 64` (D1), so register and find-by-phone are single-shard. The PK enforces R13 under concurrency. |
+| `grower_verification` | `verification_id` (uuid) | SPEC-GRW-03 (shard V4): the one-time code only as `code_hmac` (32 bytes, D3), `expires_at` (5 min), `attempts` (≤ 5), `status` OPEN / CONSUMED / EXHAUSTED. Index `(grower_id, created_at)` for the rate limit (R103). App role: no DELETE. |
+| `grower_consent` | `consent_id` (uuid) | SPEC-GRW-03 D5: **append-only** (app role: SELECT, INSERT); the current consent is the latest row per purpose. Purpose, granted, notice version, language, channel SELF / ASSISTED, `recorded_by_user_id`. |
 | `outbox` | `event_id` | ADR-012; in publication `gc_outbox` (shard V2). Payloads carry **ids only**. |
 
 Indexes for the scope filters (R2/R3): `grower_territory_ix (territory_id, grower_id)`, plus partial indexes on `preferred_partner_org_id` and `onboarded_via_org_id`.
 
 ## 5. Dev seed
-Four growers, G1–G4 (SPEC-GRW-01 §2). Their HMACs and ciphertexts use the **dev keys** in `.env.example`, and their ids are encoded for the D1 shard of each phone: IN 39, 30, 40 and BR 41. GRW-E96 checks the ids, the shards, the directory rows and decryption.
+Four growers, G1–G4 (SPEC-GRW-01 §2). Their HMACs and ciphertexts use the **dev keys** in `.env.example`, and their ids are encoded for the D1 shard of each phone: IN 39, 30, 40 and BR 41. GRW-E96 checks the ids, the shards, the directory rows and decryption. SPEC-GRW-03 R132 adds consent notices (common dev seed V1001: IN en/hi/mr, BR pt/en; `in-2025-01` is an outdated IN version) and the SERVICE consent of G1, G2 and G4 (shard dev seed V1001); G3 stays `PENDING_CONSENT`.

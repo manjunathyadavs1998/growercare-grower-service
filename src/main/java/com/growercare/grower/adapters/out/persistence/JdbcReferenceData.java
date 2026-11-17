@@ -39,4 +39,12 @@ class JdbcReferenceData implements ReferenceData {
                 .query((rs, n) -> new Partner(rs.getLong("partner_org_id"), rs.getString("country_code"), rs.getString("status")))
                 .optional();
     }
+
+    @Override
+    public Optional<String> currentNotice(String countryCode, String purpose, String language, java.time.Instant now) {
+        return jdbc.sql(sql.get("grower-ref.currentNotice"))
+                .param("countryCode", countryCode).param("purpose", purpose).param("language", language)
+                .param("now", java.sql.Timestamp.from(now))
+                .query(String.class).optional();
+    }
 }

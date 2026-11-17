@@ -66,6 +66,13 @@ public abstract class GrowerApiTestBase {
         PrincipalResolver stubIam() {
             return DevSeedPrincipals::resolve;
         }
+
+        /** notification-service replaced by a recorder (SPEC-GRW-03 §2). */
+        @Bean
+        @Primary
+        RecordingMessageSender recordingMessageSender() {
+            return new RecordingMessageSender();
+        }
     }
 
     protected static final JsonMapper JSON = JsonMapper.builder().build();
@@ -73,6 +80,9 @@ public abstract class GrowerApiTestBase {
 
     @Autowired
     protected MockMvc mvc;
+
+    @Autowired
+    protected RecordingMessageSender messages;
 
     protected final JdbcClient owner = JdbcClient.create(GrowerTestDatabase.migrated().ownerDataSource());
 
