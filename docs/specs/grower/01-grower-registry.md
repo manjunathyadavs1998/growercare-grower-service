@@ -30,7 +30,7 @@
 ### Register (`POST /growers`)
 | Rule | Given | When | Then |
 |---|---|---|---|
-| GRW-R10 | GROWER with `grower:create`, no grower linked yet | registers self (`territoryId`, `displayName`, `phone`, `preferredLanguage`, optional `preferredPartnerOrgId`) | 201, `Location`, `ETag "0"`; `userId` = caller, `status ACTIVE`, `onboardingChannel SELF`; outbox `grower.registered` |
+| GRW-R10 | GROWER with `grower:create`, no grower linked yet | registers self (`territoryId`, `displayName`, `phone`, `preferredLanguage`, optional `preferredPartnerOrgId`) | 201, `Location`, `ETag "0"`; `userId` = caller, ~~`status ACTIVE`~~ `status PENDING_CONSENT` (*superseded by SPEC-GRW-03 R100*), `onboardingChannel SELF`; outbox `grower.registered` |
 | GRW-R11 | staff or partner with `grower:create` and the territory in scope | registers someone else (assisted, IAM-1) | 201, `userId null`, `status PENDING_CONSENT`, `onboardingChannel ASSISTED`, `onboardedByUserId` = caller, `onboardedViaOrgId` = caller's org (partners) ; outbox `grower.registered`. Becomes ACTIVE only through SPEC-GRW-03 (grower OTP consent) |
 | GRW-R12 | GROWER already linked to a grower | registers self again | 409 `DUPLICATE` ("already registered"; the platform error catalogue has one 409 code for duplicates) |
 | GRW-R13 | phone already in the country's directory | register | 409 `DUPLICATE` ("phone already registered"). The response **never** contains the other grower's id (no enumeration) |
@@ -111,7 +111,7 @@ Names, users, territories, partners and last-4 digits match case-service's repli
 ### Register
 | Example | Rule | Actor | Input | Expected |
 |---|---|---|---|---|
-| GRW-E20 | R10 | new grower user (no grower) | territory 1002, "Anil Shinde", `+91 99887 76655`, `mr` | 201, ACTIVE, SELF, `userId` = caller, `phoneLast4 "6655"`, event `grower.registered` with ids only |
+| GRW-E20 | R10 | new grower user (no grower) | territory 1002, "Anil Shinde", `+91 99887 76655`, `mr` | 201, ~~ACTIVE~~ PENDING_CONSENT (*SPEC-GRW-03 R100*), SELF, `userId` = caller, `phoneLast4 "6655"`, event `grower.registered` with ids only |
 | GRW-E21 | R11 | agro.in | territory 1002, phone `9988776644` (national format) | 201, PENDING_CONSENT, ASSISTED, `onboardedByUserId 102`, phone normalised to `+919988776644` |
 | GRW-E22 | R11 | retailer.in | territory 1002 | 201, `onboardedViaOrgId 501`; visible to retailer.in afterwards (R2) |
 | GRW-E23 | R12 | grower.in1 | register self | 409 `DUPLICATE` |

@@ -1,6 +1,8 @@
 package com.growercare.grower.config;
 
 import com.growercare.grower.adapters.out.iam.IamPrincipalClient;
+import com.growercare.grower.adapters.out.notification.NotificationClient;
+import com.growercare.grower.application.port.MessageSender;
 import com.growercare.grower.domain.GrowerAccess;
 import com.growercare.security.PolicyEnforcer;
 import com.growercare.security.PrincipalResolver;
@@ -27,7 +29,7 @@ import tools.jackson.databind.json.JsonMapper;
  * cached in Redis (ADR-011); grower access on top of the shared ABAC engine ({@link GrowerAccess}).
  */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(GrowerSecurityConfig.IamClientProperties.class)
+@EnableConfigurationProperties({GrowerSecurityConfig.IamClientProperties.class, GrowerSecurityConfig.NotificationClientProperties.class})
 public class GrowerSecurityConfig {
 
     /** {@code gc.iam.*}: where IAM lives and how long we wait for it. */
@@ -37,6 +39,23 @@ public class GrowerSecurityConfig {
             connectTimeout = connectTimeout == null ? Duration.ofSeconds(1) : connectTimeout;
             readTimeout = readTimeout == null ? Duration.ofSeconds(2) : readTimeout;
         }
+    }
+
+    /** {@code gc.notification.*}: where notification-service lives (SPEC-GRW-03 D2). */
+    @ConfigurationProperties("gc.notification")
+    public record NotificationClientProperties(String baseUrl, Duration connectTimeout, Duration readTimeout) {
+        public NotificationClientProperties {
+            connectTimeout = connectTimeout == null ? Duration.ofSeconds(1) : connectTimeout;
+            readTimeout = readTimeout == null ? Duration.ofSeconds(3) : readTimeout;
+        }
+    }
+
+    /** SPEC-GRW-03 D2: one-time codes go to notification-service synchronously (never through Kafka). */
+    @Bean
+    MessageSender notificationClient(NotificationClientProperties notification, OAuth2AuthorizedClientManager tokens) {
+        var requestFactory = new JdkClientHttpRequestFactory(HttpClient.newBuilder().connectTimeout(notification.connectTimeout()).build());
+        requestFactory.setReadTimeout(notification.readTimeout());
+        return new NotificationClient(RestClient.builder().baseUrl(notification.baseUrl()).requestFactory(requestFactory).build(), tokens);
     }
 
     /** Client-credentials tokens outside any user request (no HttpServletRequest needed), cached until expiry. */

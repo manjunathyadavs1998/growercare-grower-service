@@ -33,7 +33,7 @@ import java.util.TreeSet;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/** Grower write use cases: register (SPEC-GRW-01 R10–R18) and update (R23–R29). */
+/** Grower write use cases: register (SPEC-GRW-01 R10–R18, status per SPEC-GRW-03 R100) and update (R23–R29). */
 @Service
 public class GrowerCommands {
 
@@ -113,7 +113,7 @@ public class GrowerCommands {
         var sealed = phones.encrypt(phone);
         var row = new NewGrowerRow(territory.territoryId(), self ? principal.userId() : null, name, hmac, sealed.ciphertext(),
                 sealed.keyId(), phone.lastFour(), cmd.preferredLanguage(), cmd.preferredPartnerOrgId(),
-                self ? "ACTIVE" : "PENDING_CONSENT", self ? "SELF" : "ASSISTED",
+                "PENDING_CONSENT", self ? "SELF" : "ASSISTED",           // SPEC-GRW-03 R100: active only after OTP + consent
                 self ? null : principal.userId(), viaOrg);
         try {
             Long growerId = tx.execute(status -> {

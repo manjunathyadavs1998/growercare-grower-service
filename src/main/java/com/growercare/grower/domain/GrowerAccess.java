@@ -26,6 +26,8 @@ public final class GrowerAccess {
     public static final String CREATE = "grower:create";
     public static final String READ = "grower:read";
     public static final String UPDATE = "grower:update";
+    /** SPEC-GRW-03 D7: start and confirm a phone verification, record consent (assisted onboarding included). */
+    public static final String CONSENT = "grower:consent";
     /** Same resource name as every other 404 here, so out-of-scope and unknown growers are indistinguishable (R21). */
     static final String RESOURCE = "Grower";
 
