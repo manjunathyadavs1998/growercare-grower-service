@@ -140,7 +140,6 @@ public class GrowerCommands {
         }
     }
 
-    /** R16/R17: same key + same request → the original grower (its shard decoded from its id); other request → 409. */
     // ============================================================================================ update
 
     /**
@@ -218,6 +217,7 @@ public class GrowerCommands {
         return growers.findById(shard, growerId).orElseThrow();
     }
 
+    /** R16/R17: same key + same request → the original grower (its shard decoded from its id); other request → 409. */
     private RegisterResult replay(GrowerRepository.IdempotencyRecord previous, byte[] hash) {
         if (!Arrays.equals(previous.requestHash(), hash)) {
             throw new ConflictException(ErrorCode.IDEMPOTENCY_KEY_REUSED, "Idempotency-Key was already used for a different request");
