@@ -47,4 +47,13 @@ class JdbcReferenceData implements ReferenceData {
                 .param("now", java.sql.Timestamp.from(now))
                 .query(String.class).optional();
     }
+
+    @Override
+    public java.util.Set<String> knownCrops(java.util.Collection<String> codes) {
+        var wanted = codes.stream().filter(java.util.Objects::nonNull).distinct().toArray(String[]::new);
+        if (wanted.length == 0) {
+            return java.util.Set.of();
+        }
+        return java.util.Set.copyOf(jdbc.sql(sql.get("grower-ref.knownCrops")).param("codes", wanted).query(String.class).list());
+    }
 }

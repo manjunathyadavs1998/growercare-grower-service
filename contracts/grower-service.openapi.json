@@ -70,6 +70,61 @@
         },
         "type" : "object"
       },
+      "FarmPage" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FarmView"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "FarmView" : {
+        "properties" : {
+          "areaHa" : {
+            "type" : "number"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "crops" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "farmId" : {
+            "type" : "string"
+          },
+          "growerId" : {
+            "type" : "string"
+          },
+          "location" : {
+            "$ref" : "#/components/schemas/LocationView"
+          },
+          "locationPrecision" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "GrowerPage" : {
         "properties" : {
           "items" : {
@@ -245,6 +300,17 @@
           },
           "valueNode" : {
             "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "LocationView" : {
+        "properties" : {
+          "latitude" : {
+            "type" : "number"
+          },
+          "longitude" : {
+            "type" : "number"
           }
         },
         "type" : "object"
@@ -550,6 +616,201 @@
         "tags" : [ "consent-controller" ]
       }
     },
+    "/growers/{growerId}/farms" : {
+      "get" : {
+        "operationId" : "list",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "includeArchived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FarmPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "farm-controller" ]
+      },
+      "post" : {
+        "operationId" : "create",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FarmView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "farm-controller" ]
+      }
+    },
+    "/growers/{growerId}/farms/{farmId}" : {
+      "get" : {
+        "operationId" : "get_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "farmId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FarmView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "farm-controller" ]
+      },
+      "patch" : {
+        "operationId" : "update_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "farmId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FarmView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "farm-controller" ]
+      }
+    },
+    "/growers/{growerId}/farms/{farmId}/archive" : {
+      "post" : {
+        "operationId" : "archive",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "farmId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FarmView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "farm-controller" ]
+      }
+    },
     "/growers/{growerId}/verifications" : {
       "post" : {
         "operationId" : "start",
@@ -653,6 +914,39 @@
           }
         },
         "tags" : [ "internal-grower-controller" ]
+      }
+    },
+    "/internal/growers/{growerId}/farms/{farmId}" : {
+      "get" : {
+        "operationId" : "replica_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "farmId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FarmView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "farm-controller" ]
       }
     }
   },
