@@ -62,6 +62,74 @@ final class GrowerDtos {
 
     record GrowerPage(List<GrowerView> items) { }
 
+    /** R42: what case-service replicates. Unmasked (a service, not a person); the phone only as HMAC (base64). */
+    record GrowerReplicaView(String growerId, String countryCode, String territoryId, String userId, String displayName,
+                             String phoneHmac, String phoneLast4, String preferredPartnerOrgId, String status, int version) {
+        static GrowerReplicaView of(com.growercare.grower.application.port.GrowerRepository.Replica r) {
+            var g = r.grower();
+            return new GrowerReplicaView(id(g.growerId()), g.countryCode(), id(g.territoryId()), id(g.userId()), g.displayName(),
+                    java.util.Base64.getEncoder().encodeToString(r.phoneHmac()), g.phoneLast4(), id(g.preferredPartnerOrgId()),
+                    g.status(), g.version());
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------------ PATCH (R23–R29)
+
+    static final java.util.Set<String> EDITABLE = java.util.Set.of("displayName", "preferredLanguage", "territoryId", "preferredPartnerOrgId");
+
+    /**
+     * Reads a JSON merge patch (R23). Unknown or immutable fields are a 422 naming the field (R25); a body that is not
+     * a non-empty object, or a field of the wrong type, is a 400 naming the field (R28). Null clears only the partner.
+     */
+    static com.growercare.grower.domain.GrowerChanges changes(tools.jackson.databind.JsonNode body) {
+        if (body == null || !body.isObject() || body.isEmpty()) {
+            throw ValidationException.of("body", "must be a JSON object with at least one of " + new java.util.TreeSet<>(EDITABLE));
+        }
+        for (var entry : body.properties()) {
+            if (!EDITABLE.contains(entry.getKey())) {
+                throw new com.growercare.common.error.BusinessRuleException("grower.field-immutable",
+                        "Field " + entry.getKey() + " cannot be changed here");
+            }
+        }
+        var territory = body.get("territoryId");
+        var partner = body.get("preferredPartnerOrgId");
+        return new com.growercare.grower.domain.GrowerChanges(
+                text(body, "displayName"),
+                text(body, "preferredLanguage"),
+                territory == null ? null : id(idText(territory, "territoryId"), "territoryId"),
+                partner != null,
+                partner == null || partner.isNull() ? null : id(idText(partner, "preferredPartnerOrgId"), "preferredPartnerOrgId"));
+    }
+
+    private static String text(tools.jackson.databind.JsonNode body, String field) {
+        var node = body.get(field);
+        if (node == null) {
+            return null;
+        }
+        if (!node.isString()) {
+            throw ValidationException.of(field, "must be a string");
+        }
+        return node.asString();
+    }
+
+    private static String idText(tools.jackson.databind.JsonNode node, String field) {
+        if (!node.isString() || !node.asString().matches(ID)) {
+            throw ValidationException.of(field, "must be an id as a string, e.g. \"1002\"");
+        }
+        return node.asString();
+    }
+
+    private static final java.util.regex.Pattern ETAG = java.util.regex.Pattern.compile("^(?:W/)?\"(\\d{1,9})\"$");
+
+    /** {@code If-Match: "7"} (weak form accepted) → 7; anything else is a 400 on the header (R24). */
+    static int version(String ifMatch) {
+        var m = ETAG.matcher(ifMatch.strip());
+        if (!m.matches()) {
+            throw ValidationException.of("If-Match", "must be the ETag of the current version, e.g. \"3\"");
+        }
+        return Integer.parseInt(m.group(1));
+    }
+
     static String id(Long value) {
         return value == null ? null : Long.toString(value);
     }

@@ -45,6 +45,16 @@ public class GrowerQueries {
     }
 
     /**
+     * R42: the replica view for allow-listed service clients (the route is restricted to them by gc-security; there is
+     * no end user, so no grower scope applies). Unknown ids and ids of unknown countries are 404.
+     */
+    public GrowerRepository.Replica replica(long growerId) {
+        return router.forId(growerId)
+                .flatMap(shard -> growers.findReplica(shard, growerId))
+                .orElseThrow(() -> new NotFoundException("Grower"));
+    }
+
+    /**
      * R30–R32: phone → HMAC → the one shard that can hold it. The country only selects the phone plan and the shard;
      * a grower outside the caller's scope is reported exactly like an unregistered number (empty list).
      */

@@ -110,6 +110,16 @@ public abstract class GrowerApiTestBase {
         return as(actor, post("/growers/search").contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(body)));
     }
 
+    /** PATCH /growers/{id} with a raw JSON body; {@code ifMatch} null = no header. */
+    protected ResultActions patch(GcPrincipal actor, String growerId, String ifMatch, String json) throws Exception {
+        var request = org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/growers/{id}", growerId)
+                .contentType(MediaType.APPLICATION_JSON).content(json);
+        if (ifMatch != null) {
+            request.header("If-Match", ifMatch);
+        }
+        return as(actor, request);
+    }
+
     protected static ResultActions problem(ResultActions r, int status, String code) throws Exception {
         return r.andExpect(status().is(status))
                 .andExpect(header().string("Content-Type", "application/problem+json"))

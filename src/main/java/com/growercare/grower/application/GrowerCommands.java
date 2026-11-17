@@ -4,6 +4,7 @@ import com.growercare.common.error.BusinessRuleException;
 import com.growercare.common.error.ConflictException;
 import com.growercare.common.error.ErrorCode;
 import com.growercare.common.error.NotFoundException;
+import com.growercare.common.error.StaleVersionException;
 import com.growercare.common.error.ValidationException;
 import com.growercare.common.web.TraceIds;
 import com.growercare.grower.application.port.GrowerRepository;
@@ -11,6 +12,7 @@ import com.growercare.grower.application.port.GrowerRepository.DuplicateExceptio
 import com.growercare.grower.application.port.GrowerRepository.NewGrowerRow;
 import com.growercare.grower.application.port.ReferenceData;
 import com.growercare.grower.domain.GrowerAccess;
+import com.growercare.grower.domain.GrowerChanges;
 import com.growercare.grower.domain.GrowerPlacement;
 import com.growercare.grower.domain.GrowerRecord;
 import com.growercare.grower.domain.GrowerRules;
@@ -28,7 +30,7 @@ import java.util.LinkedHashMap;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/** Grower write use cases: register (SPEC-GRW-01 R10–R18). */
+/** Grower write use cases: register (SPEC-GRW-01 R10–R18) and update (R23–R29). */
 @Service
 public class GrowerCommands {
 
@@ -139,6 +141,83 @@ public class GrowerCommands {
     }
 
     /** R16/R17: same key + same request → the original grower (its shard decoded from its id); other request → 409. */
+    // ============================================================================================ update
+
+    /**
+     * R23–R29: change the editable fields under an optimistic lock. Out of scope (now, or the target territory) is
+     * 404; a country move is not an update (data residency); a patch that changes nothing keeps the version and
+     * publishes nothing.
+     */
+    @RequiresPermission(GrowerAccess.UPDATE)
+    public GrowerRecord update(long growerId, int expectedVersion, GrowerChanges changes) {
+        var principal = CurrentPrincipal.require();
+        var shard = router.forId(growerId).orElseThrow(() -> new NotFoundException("Grower"));
+        var current = growers.findById(shard, growerId).orElseThrow(() -> new NotFoundException("Grower"));
+        access.require(principal, GrowerAccess.UPDATE, current.access());
+
+        if (changes.displayName() != null && !GrowerRules.isValidName(changes.displayName())) {
+            throw ValidationException.of("displayName", "must be 1-" + GrowerRules.MAX_NAME + " characters without control characters");
+        }
+        if (changes.preferredLanguage() != null && !GrowerRules.isSupportedLanguage(changes.preferredLanguage())) {
+            throw ValidationException.of("preferredLanguage", "must be an ISO 639-1 language, e.g. mr or pt-BR");
+        }
+        long territoryId = current.territoryId();
+        if (changes.territoryId() != null && changes.territoryId() != current.territoryId()) {
+            var target = ref.territory(changes.territoryId()).filter(ReferenceData.Territory::active)
+                    .orElseThrow(() -> new NotFoundException("Territory"));
+            if (!target.countryCode().equals(current.countryCode())) {
+                throw new BusinessRuleException("grower.country-change",
+                        "A grower cannot move to another country; that is a new registration in the new country (data residency)");
+            }
+            var moved = new GrowerAccess.Attributes(current.countryCode(), target.territoryId(), current.userId(),
+                    current.preferredPartnerOrgId(), current.onboardedViaOrgId());
+            if (!access.permits(principal, GrowerAccess.UPDATE, moved)) {
+                throw new NotFoundException("Territory");
+            }
+            territoryId = target.territoryId();
+        }
+        Long partner = changes.partnerInPatch() ? changes.preferredPartnerOrgId() : current.preferredPartnerOrgId();
+        if (changes.partnerInPatch() && partner != null && !partner.equals(current.preferredPartnerOrgId())
+                && ref.partner(partner).filter(p -> p.activeIn(current.countryCode())).isEmpty()) {
+            throw new BusinessRuleException("grower.partner-invalid", "The preferred partner is not an active partner in " + current.countryCode());
+        }
+        var name = changes.displayName() == null ? current.displayName() : changes.displayName().strip();
+        var language = changes.preferredLanguage() == null ? current.preferredLanguage() : changes.preferredLanguage();
+
+        var changed = new java.util.TreeSet<String>();   // sorted: a stable event payload
+        if (!name.equals(current.displayName())) {
+            changed.add("displayName");
+        }
+        if (!language.equals(current.preferredLanguage())) {
+            changed.add("preferredLanguage");
+        }
+        if (territoryId != current.territoryId()) {
+            changed.add("territoryId");
+        }
+        if (!java.util.Objects.equals(partner, current.preferredPartnerOrgId())) {
+            changed.add("preferredPartnerOrgId");
+        }
+        if (changed.isEmpty()) {
+            if (current.version() != expectedVersion) {
+                throw new StaleVersionException("Grower", expectedVersion);
+            }
+            return current;   // R28: nothing changed, same version, no event
+        }
+
+        var row = new GrowerRepository.ProfileRow(territoryId, name, language, partner);
+        tx.executeWithoutResult(status -> {
+            int version = growers.updateProfile(shard, growerId, expectedVersion, row)
+                    .orElseThrow(() -> new StaleVersionException("Grower", expectedVersion));
+            var payload = new LinkedHashMap<String, Object>();
+            payload.put("growerId", Long.toString(growerId));
+            payload.put("version", version);
+            payload.put("changedFields", java.util.List.copyOf(changed));
+            outbox.append(shard.schemaName() + ".outbox",
+                    new OutboxWriter.Event("grower", Long.toString(growerId), "grower.updated", payload), TraceIds.currentOrNull());
+        });
+        return growers.findById(shard, growerId).orElseThrow();
+    }
+
     private RegisterResult replay(GrowerRepository.IdempotencyRecord previous, byte[] hash) {
         if (!Arrays.equals(previous.requestHash(), hash)) {
             throw new ConflictException(ErrorCode.IDEMPOTENCY_KEY_REUSED, "Idempotency-Key was already used for a different request");

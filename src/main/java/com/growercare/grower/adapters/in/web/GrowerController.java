@@ -57,6 +57,15 @@ class GrowerController {
         return ResponseEntity.ok().eTag(etag(view.version())).body(view);
     }
 
+    /** R23–R29: JSON merge patch of the editable fields under {@code If-Match}. */
+    @org.springframework.web.bind.annotation.PatchMapping("/growers/{growerId}")
+    ResponseEntity<GrowerView> update(@PathVariable String growerId, @RequestHeader("If-Match") String ifMatch,
+                                      @RequestBody(required = false) tools.jackson.databind.JsonNode body) {
+        var id = growerIdOrNotFound(growerId);
+        var view = view(commands.update(id, GrowerDtos.version(ifMatch), GrowerDtos.changes(body)));
+        return ResponseEntity.ok().eTag(etag(view.version())).body(view);
+    }
+
     /** R30/R31: a POST so the phone number never appears in a URL or an access log. */
     @PostMapping("/growers/search")
     GrowerPage search(@Valid @RequestBody SearchRequest body) {

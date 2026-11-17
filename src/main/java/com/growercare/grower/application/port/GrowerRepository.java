@@ -33,6 +33,17 @@ public interface GrowerRepository {
 
     Optional<GrowerRecord> findById(ShardId shard, long growerId);
 
+    /** R42: the record plus its phone HMAC, for the internal replica view only. */
+    record Replica(GrowerRecord grower, byte[] phoneHmac) { }
+
+    Optional<Replica> findReplica(ShardId shard, long growerId);
+
+    /** The editable fields after an update (R23). */
+    record ProfileRow(long territoryId, String displayName, String preferredLanguage, Long preferredPartnerOrgId) { }
+
+    /** Optimistic lock: empty when {@code expectedVersion} is no longer current (R24); otherwise the new version. */
+    Optional<Integer> updateProfile(ShardId shard, long growerId, int expectedVersion, ProfileRow row);
+
     Optional<GrowerRecord> findByPhone(ShardId shard, byte[] phoneHmac);
 
     long insert(ShardId shard, NewGrowerRow row);

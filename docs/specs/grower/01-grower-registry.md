@@ -1,6 +1,6 @@
 # SPEC-GRW-01: Grower registry (register, read, update, find by phone)
 - **Requirements:** GRW-1 (grower profile part), IAM-1 (assisted onboarding), ACC-1, ACC-3, ACC-11, PRV-5, ID-1/ID-3/ID-4/ID-8, convention 1–5
-- **Status:** Agreed (2026-11-16). Implemented: increment 0 (phone normalisation and protection, D3, E80–E85), increment 1 (schema, R50–R57, E90–E97), increment 2 (access and security: R1–R5 / E01–E11, R40–R42 at wiring level, R41 client), increment 3a (register, read, find by phone: R10–R22, R30–R32, D9)
+- **Status:** Implemented (agreed 2026-11-16; increments 0–3b, 2026-11-16/17). Every rule R1–R57 and decision D1–D9 has passing example rows; OTP consent, phone change and unmask are SPEC-GRW-03/04.
 - **Owner:** grower-service (repository `growercare-grower-service`, port 8084; 8083 is Kafka Connect locally)
 - **Follow-ups (separate specs):** SPEC-GRW-02 farms/plots and crops · SPEC-GRW-03 consents + OTP confirmation of assisted onboarding (PRV-1) · SPEC-GRW-04 audited phone unmask (ACC-3) · SPEC-CASE-06 case-service replica sync from `grower.*` events
 
@@ -47,10 +47,12 @@
 | GRW-R21 | id out of scope, unknown, malformed, or of an unknown country/shard | `GET` / `PATCH` | 404 `NOT_FOUND` (same body for all, nothing revealed) |
 | GRW-R22 | grower PII (ACC-3) | grower returned | `displayName` full for FULL clearance (the grower themself, field staff), masked word by word (`R***** P****`) for MASKED (care, partners, managers); `phoneLast4` always; **no phone field ever** |
 | GRW-R23 | `grower:update` + in scope | `PATCH /growers/{id}` with `If-Match` (fields: `displayName`, `preferredLanguage`, `preferredPartnerOrgId`, `territoryId`) | 200, version + 1, new `ETag`; outbox `grower.updated` with the **names** of changed fields only |
-| GRW-R24 | — | `If-Match` missing · stale | 428 `PRECONDITION_REQUIRED` · 412 `STALE_VERSION` (with `expectedVersion`), no change |
+| GRW-R24 | — | `If-Match` missing · stale | 428 `PRECONDITION_REQUIRED` · 412 `STALE_VERSION` (with `expectedVersion` = the version the client sent), no change |
 | GRW-R25 | PATCH tries `phone`, `userId`, `status`, `countryCode` or an unknown field | update | 422 `grower.field-immutable` naming the field (phone: D5) |
 | GRW-R26 | new `territoryId` in another country, or outside the caller's scope | update | 422 `grower.country-change` (a country move is a new grower record, data residency) · 404 for out-of-scope territory |
 | GRW-R27 | GROWER (OWN) | PATCH own `territoryId` or `preferredPartnerOrgId` | allowed (territory within the same country); `displayName` too |
+| GRW-R28 | — | PATCH body empty (`{}`) or not a JSON object; a field with the wrong type (e.g. `territoryId: 12`, `displayName: null`) | 400 `VALIDATION_FAILED` naming the field; a patch that changes nothing returns 200 with the same version and no event |
+| GRW-R29 | `preferredPartnerOrgId: null` | update | clears the preferred partner (JSON merge patch) |
 
 ### Find by phone (`POST /growers/search`)
 | Rule | Given | When | Then |
@@ -76,7 +78,7 @@
 |---|---|---|---|
 | GRW-R40 | no/invalid token · valid token without an account | any request | 401 problem+json |
 | GRW-R41 | IAM unreachable, slow or unreadable | any request | 503 `DEPENDENCY_UNAVAILABLE`, never 500 (as CASE-R9/R9a) |
-| GRW-R42 | allow-listed service client (aud `gc-internal`) | `GET /internal/growers/{id}` | 200 replica view `{growerId, countryCode, territoryId, userId, displayName, phoneHmac, phoneLast4, preferredPartnerOrgId, status, version}` for SPEC-CASE-06; user token on `/internal` → 403; allow-listed service token on the user API → 403, a service client that is not allow-listed → 401 (as IAM-R17, CASE-R10) |
+| GRW-R42 | allow-listed service client (aud `gc-internal`) | `GET /internal/growers/{id}` | 200 replica view `{growerId, countryCode, territoryId, userId, displayName (unmasked), phoneHmac (base64), phoneLast4, preferredPartnerOrgId, status, version}`; unknown or malformed id → 404 for SPEC-CASE-06; user token on `/internal` → 403; allow-listed service token on the user API → 403, a service client that is not allow-listed → 401 (as IAM-R17, CASE-R10) |
 | GRW-R43 | missing env variable (`GC_PHONE_HMAC_KEY`, `GC_PHONE_ENC_KEY`, DB, IAM, Keycloak…) | start | refuses to start naming every missing variable (SPEC-PLAT-06) |
 
 ## 2. Examples
@@ -133,12 +135,17 @@ Names, users, territories, partners and last-4 digits match case-service's repli
 | GRW-E41 | R21 | care.br | GET G1 · GET `999` (unknown) · GET `abc` · GET `9999999999999999999` (above the 64-bit range) · GET id with unknown country bits | 404, identical bodies (never 500) |
 | GRW-E42 | R22 | grower.in1 / agro.in → FULL; care.in / retailer.in → MASKED | GET G1 | "Ramesh Patil" vs "R***** P****"; `phoneLast4 "3210"`; no `phone` key in JSON |
 | GRW-E43 | R23 | care.in | PATCH G2 `preferredLanguage "hi"`, `If-Match "0"` | 200, `ETag "1"`, event `grower.updated {changedFields:["preferredLanguage"]}` |
-| GRW-E44 | R24 | care.in | PATCH without `If-Match` · with `"7"` | 428 · 412 `expectedVersion 0` |
+| GRW-E44 | R24 | care.in | PATCH without `If-Match` · with `"7"` | 428 · 412 `expectedVersion 7` |
 | GRW-E45 | R25 | care.in | PATCH `phone` · `status` · `countryCode` · `userId` · `foo` | 422 `grower.field-immutable` naming each field |
 | GRW-E46 | R26 | care.in | PATCH G1 `territoryId 2002` | 422 `grower.country-change` |
 | GRW-E47 | R26 | tm.in | PATCH G1 `territoryId 1005` | 404 (target territory out of scope) |
 | GRW-E48 | R27 | grower.in1 | PATCH own `territoryId 1003` | 200 |
 | GRW-E49 | R21 | grower.in2 | PATCH G1 | 404 |
+| GRW-E49a | R4 | retailer.in (no `grower:update`, D7) | PATCH a grower it onboarded | 403 |
+| GRW-E49b | R14 | care.in | PATCH `preferredPartnerOrgId` of a BR partner | 422 `grower.partner-invalid` |
+| GRW-E50 | R28 | care.in | `{}` · `[]` · `{"territoryId": 12}` · `{"displayName": null}` | 400 · 400 · 400 `territoryId` · 400 `displayName` |
+| GRW-E51 | R28 | care.in | PATCH with the current values | 200, same `ETag`, no `grower.updated` event |
+| GRW-E52 | R29 | care.in | `{"preferredPartnerOrgId": null}` on a grower with partner 501 | 200, `preferredPartnerOrgId` absent, event `changedFields ["preferredPartnerOrgId"]` |
 
 ### Find by phone
 | Example | Rule | Actor | Input | Expected |
@@ -228,9 +235,10 @@ Database `gc_grower`, owner/app role split, migrations as in `sharded-migration`
 | R1–R5 / E01–E11 | `GrowerAccessTest#visibleGrowers`, `#requireAnswers404OutsideScope`, `#expiredAndGlobalGrantsSeeNothing`, `#growerViewMapsScopesAndIgnoresBu`; `GrowerIsolationIT#sqlFilterAndEnforcerAgree` (E11, SQL over the seeded shards) |
 | R10–R18 / E20–E33 | `GrowerRegistrationIT` (`GRW_E20…`, `#rejectedRegistrations`, `#invalidInputIs400WithTheField`, `GRW_E30_E31…`, `GRW_E30_aSelfRegistration…`, `GRW_E32…`); `GrowerRulesTest#requestHashIsStableAndSensitiveToEveryField`, `#supportedLanguages`; `GrowerPlacementTest` |
 | R20–R22 / E40–E42 | `GrowerReadSearchIT#GRW_E40…`, `#outOfScopeUnknownAndMalformedAreTheSame404`, `#namesAreMaskedByClearanceAndThePhoneNeverLeaves`; `GrowerRulesTest#namesAreMaskedWordByWord` |
-| R23–R27 / E43–E49 | increment 3b (`GrowerUpdateIT`) |
+| R23–R29 / E43–E52 | `GrowerUpdateIT` (`GRW_E43…E52`, `#immutableAndUnknownFieldsAreRejectedByName`, `#malformedPatchesAre400`) |
 | R30–R32 / E60–E65 | `GrowerReadSearchIT#findByPhone`, `#GRW_E60_anInvalidPhoneIs400`, `#GRW_E65_thePhoneIsNeverAcceptedInAUrl` |
 | D1 placement / E32 (unit part) | `GrowerPlacementTest#shardOfHmac` |
 | R50–R57 / E90–E97 | `GrowerSchemaMigrationIT` (nested by rule), `ShardMigrationConventionsTest` |
 | D3 / E80–E85 | `PhoneNumberTest#normalises`, `#rejects`, `#lastFourAndToString`; `PhoneProtectorTest#hmac`, `#encryption` |
-| R40–R43 / E70–E73 | `GrowerSecurityIT#rejectedCallers`, `#acceptedCallersPassSecurity` (wiring; the 200 of E72 with `InternalGrowerApiIT` in increment 3); `IamPrincipalClientTest` (E70/E71 client side); `ConfigurationHygieneTest` (E73) |
+| PLAT-R1/R3 (contract) | `GrowerOpenApiContractIT` → `contracts/grower-service.openapi.json` |
+| R40–R43 / E70–E73 | `GrowerSecurityIT#rejectedCallers`, `#acceptedCallersPassSecurity` (wiring); `InternalGrowerApiIT` (E72: replica view, 404s); `IamPrincipalClientTest` (E70/E71 client side); `ConfigurationHygieneTest` (E73) |
