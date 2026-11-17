@@ -172,7 +172,9 @@ class GrowerSchemaMigrationIT {
                     argumentSet("GRW-E130 update consent rows", "UPDATE in_s05.grower_consent SET granted = false"),
                     argumentSet("GRW-E130 delete consent rows", "DELETE FROM in_s05.grower_consent"),
                     argumentSet("GRW-E130 delete verifications", "DELETE FROM in_s05.grower_verification"),
-                    argumentSet("GRW-E130 change consent notices", "UPDATE ref.consent_notice SET version = 'x'"));
+                    argumentSet("GRW-E130 change consent notices", "UPDATE ref.consent_notice SET version = 'x'"),
+                    argumentSet("GRW-E220 delete farms", "DELETE FROM in_s05.farm"),
+                    argumentSet("GRW-E220 change crop codes", "INSERT INTO ref.crop (crop_code, name) VALUES ('EVIL', 'x')"));
         }
 
         @ParameterizedTest
@@ -239,6 +241,23 @@ class GrowerSchemaMigrationIT {
                     argumentSet("GRW-E132 G2 active with SERVICE consent", "in_s30", 110165911145445378L, "ACTIVE", "SERVICE:true:in-2026-11:SELF"),
                     argumentSet("GRW-E132 G4 active with SERVICE consent", "br_s41", 110165911142966276L, "ACTIVE", "SERVICE:true:br-2026-11:SELF"),
                     argumentSet("GRW-E132 G3 pending without consent", "in_s40", 110165911145455619L, "PENDING_CONSENT", ""));
+        }
+
+        static Stream<Arguments> farms() {
+            return Stream.of(
+                    argumentSet("GRW-E221 80011 of G1", "in_s39", 80011L, 110165911145454593L, "GRAPE"),
+                    argumentSet("GRW-E221 80012 of G2", "in_s30", 80012L, 110165911145445378L, "ONION"),
+                    argumentSet("GRW-E221 80013 of G4", "br_s41", 80013L, 110165911142966276L, "SOYBEAN"),
+                    argumentSet("GRW-E221 80014 of G3", "in_s40", 80014L, 110165911145455619L, "RAGI"));
+        }
+
+        @ParameterizedTest
+        @MethodSource("farms")
+        void seedFarmsBelongToTheirGrowersInTheirShards(String schema, long farmId, long growerId, String crop) {
+            var row = owner.sql("SELECT grower_id, status, version, crops[1] AS crop FROM %s.farm WHERE farm_id = ?".formatted(schema))
+                    .param(farmId).query().singleRow();
+            assertThat(row).containsEntry("grower_id", growerId).containsEntry("status", "ACTIVE").containsEntry("version", 0)
+                    .containsEntry("crop", crop);
         }
 
         @ParameterizedTest

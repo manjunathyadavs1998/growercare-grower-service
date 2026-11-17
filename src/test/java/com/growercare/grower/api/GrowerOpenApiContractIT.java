@@ -35,7 +35,13 @@ class GrowerOpenApiContractIT extends GrowerApiTestBase {
                 argumentSet("PLAT-E21 POST …/verifications/{verificationId}/confirm",
                         "/growers/{growerId}/verifications/{verificationId}/confirm", "post"),
                 argumentSet("PLAT-E21 GET /growers/{growerId}/consents", "/growers/{growerId}/consents", "get"),
-                argumentSet("PLAT-E21 PUT /growers/{growerId}/consents/{purpose}", "/growers/{growerId}/consents/{purpose}", "put"));
+                argumentSet("PLAT-E21 PUT /growers/{growerId}/consents/{purpose}", "/growers/{growerId}/consents/{purpose}", "put"),
+                argumentSet("PLAT-E21 POST /growers/{growerId}/farms", "/growers/{growerId}/farms", "post"),
+                argumentSet("PLAT-E21 GET /growers/{growerId}/farms", "/growers/{growerId}/farms", "get"),
+                argumentSet("PLAT-E21 GET /growers/{growerId}/farms/{farmId}", "/growers/{growerId}/farms/{farmId}", "get"),
+                argumentSet("PLAT-E21 PATCH /growers/{growerId}/farms/{farmId}", "/growers/{growerId}/farms/{farmId}", "patch"),
+                argumentSet("PLAT-E21 POST …/farms/{farmId}/archive", "/growers/{growerId}/farms/{farmId}/archive", "post"),
+                argumentSet("PLAT-E21 GET /internal/growers/{growerId}/farms/{farmId}", "/internal/growers/{growerId}/farms/{farmId}", "get"));
     }
 
     @ParameterizedTest

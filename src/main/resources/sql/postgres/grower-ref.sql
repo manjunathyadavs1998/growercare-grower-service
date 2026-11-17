@@ -20,3 +20,7 @@ SELECT n.version
  WHERE n.country_code = :countryCode AND n.purpose = :purpose AND n.language = :language AND n.effective_from <= :now
  ORDER BY n.effective_from DESC
  LIMIT 1
+
+-- SPEC-GRW-02 D4: which crop codes exist.
+-- name: knownCrops
+SELECT c.crop_code FROM ref.crop c WHERE c.crop_code = ANY(:codes::varchar[])

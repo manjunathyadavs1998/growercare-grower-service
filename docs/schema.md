@@ -27,6 +27,7 @@ src/main/resources/db/grower/
 | `territory` | `territory_id`; UNIQUE (`territory_id`, `country_code`) | Composite key so a grower's territory can be tied to the grower's country by FK |
 | `partner_org` | `partner_org_id`; UNIQUE (`partner_org_id`, `country_code`) | Same pattern for preferred and onboarding partners |
 | `shard` | (`country_code`, `shard_no`) | 64 rows per active country; `schema_name` = `<cc>_sNN` (CHECK) |
+| `crop` | `crop_code` | SPEC-GRW-02 D4 (common V5): the Phase 1 crop list (11 codes); read-only for the app role. Later from catalog-registry. |
 | `consent_notice` | (`country_code`, `purpose`, `language`, `version`) | SPEC-GRW-03 D8 (common V4): the current version is the latest `effective_from` not in the future. Read-only for the app role. |
 
 ## 3. `dir.grower_user_link` (D8)
@@ -44,9 +45,11 @@ src/main/resources/db/grower/
 | `phone_directory` | `phone_hmac` | FK to `grower` **in the same shard**: the shard is chosen as `unsigned(first 8 bytes of phone_hmac) mod 64` (D1), so register and find-by-phone are single-shard. The PK enforces R13 under concurrency. |
 | `grower_verification` | `verification_id` (uuid) | SPEC-GRW-03 (shard V4): the one-time code only as `code_hmac` (32 bytes, D3), `expires_at` (5 min), `attempts` (≤ 5), `status` OPEN / CONSUMED / EXHAUSTED. Index `(grower_id, created_at)` for the rate limit (R103). App role: no DELETE. |
 | `grower_consent` | `consent_id` (uuid) | SPEC-GRW-03 D5: **append-only** (app role: SELECT, INSERT); the current consent is the latest row per purpose. Purpose, granted, notice version, language, channel SELF / ASSISTED, `recorded_by_user_id`. |
+| `farm` | `farm_id` = `next_id()` | SPEC-GRW-02 (shard V5): FK grower, `farm_grower_uq (farm_id, grower_id)`, name, `area_ha` (0 < a ≤ 100000), `crops` varchar[] (1–5), optional point `latitude`/`longitude` (both or neither), status ACTIVE / ARCHIVED (no DELETE for the app role), `version`. |
+| `farm_idempotency` | (`grower_id`, `idempotency_key`) | SPEC-GRW-02 R201: creation replays; the key is per grower, so a retry routes to the same shard. |
 | `outbox` | `event_id` | ADR-012; in publication `gc_outbox` (shard V2). Payloads carry **ids only**. |
 
 Indexes for the scope filters (R2/R3): `grower_territory_ix (territory_id, grower_id)`, plus partial indexes on `preferred_partner_org_id` and `onboarded_via_org_id`.
 
 ## 5. Dev seed
-Four growers, G1–G4 (SPEC-GRW-01 §2). Their HMACs and ciphertexts use the **dev keys** in `.env.example`, and their ids are encoded for the D1 shard of each phone: IN 39, 30, 40 and BR 41. GRW-E96 checks the ids, the shards, the directory rows and decryption. SPEC-GRW-03 R132 adds consent notices (common dev seed V1001: IN en/hi/mr, BR pt/en; `in-2025-01` is an outdated IN version) and the SERVICE consent of G1, G2 and G4 (shard dev seed V1001); G3 stays `PENDING_CONSENT`.
+Four growers, G1–G4 (SPEC-GRW-01 §2). Their HMACs and ciphertexts use the **dev keys** in `.env.example`, and their ids are encoded for the D1 shard of each phone: IN 39, 30, 40 and BR 41. GRW-E96 checks the ids, the shards, the directory rows and decryption. SPEC-GRW-03 R132 adds consent notices (common dev seed V1001: IN en/hi/mr, BR pt/en; `in-2025-01` is an outdated IN version) and the SERVICE consent of G1, G2 and G4 (shard dev seed V1001); G3 stays `PENDING_CONSENT`. SPEC-GRW-02 R221 adds farms 80011–80014 (G1, G2, G4, G3) with case-service's ids (shard dev seed V1002).

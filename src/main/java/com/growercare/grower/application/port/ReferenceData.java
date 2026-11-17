@@ -24,4 +24,7 @@ public interface ReferenceData {
 
     /** SPEC-GRW-03 D8: the current consent notice version (latest effective, not in the future). */
     Optional<String> currentNotice(String countryCode, String purpose, String language, java.time.Instant now);
+
+    /** SPEC-GRW-02 D4: which of these crop codes exist. */
+    java.util.Set<String> knownCrops(java.util.Collection<String> codes);
 }
