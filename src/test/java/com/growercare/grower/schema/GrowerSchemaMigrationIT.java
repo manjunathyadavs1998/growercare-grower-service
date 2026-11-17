@@ -167,7 +167,7 @@ class GrowerSchemaMigrationIT {
                     argumentSet("GRW-E94 delete directory rows", "DELETE FROM in_s05.phone_directory"),
                     argumentSet("GRW-E94 delete user links", "DELETE FROM dir.grower_user_link"),
                     argumentSet("GRW-E94 update user links", "UPDATE dir.grower_user_link SET grower_id = 1"),
-                    argumentSet("GRW-E94 update idempotency records", "UPDATE in_s05.grower_idempotency SET grower_id = 1"),
+                    argumentSet("GRW-E94 update idempotency records", "UPDATE dir.grower_idempotency SET grower_id = 1"),
                     argumentSet("GRW-E94 update outbox events", "UPDATE in_s05.outbox SET event_type = 'x'"));
         }
 

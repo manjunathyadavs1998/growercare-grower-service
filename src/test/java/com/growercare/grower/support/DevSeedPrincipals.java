@@ -44,6 +44,22 @@ public final class DevSeedPrincipals {
         return List.of(GROWER_IN1, GROWER_IN2, GROWER_BR1, CARE_IN, AGRO_IN, TM_IN, ADMIN_IN, CARE_BR, RETAILER_IN, RETAILER2_IN);
     }
 
+    /** Test-only GROWER accounts with no grower yet (self-registration rows). Subject encodes the user id. */
+    private static final String TEST_GROWER_PREFIX = "6f1c0a10-0900-4a00-8000-";
+
+    public static GcPrincipal testGrower(long userId) {
+        return grower(userId, UUID.fromString(TEST_GROWER_PREFIX + "%012d".formatted(userId)), "IN");
+    }
+
+    /** What the stubbed IAM resolves: the dev seed, plus any {@link #testGrower} subject. */
+    public static java.util.Optional<GcPrincipal> resolve(UUID subject) {
+        var known = all().stream().filter(p -> p.subject().equals(subject)).findFirst();
+        if (known.isPresent() || !subject.toString().startsWith(TEST_GROWER_PREFIX)) {
+            return known;
+        }
+        return java.util.Optional.of(testGrower(Long.parseLong(subject.toString().substring(TEST_GROWER_PREFIX.length()))));
+    }
+
     private static EffectiveGrant grant(String role, int level, ScopeKind kind, PiiClearance pii, Set<String> perms,
                                         Set<String> countries, Set<Long> territories, Set<String> bus) {
         return new EffectiveGrant(level * 1000L, role, level, kind, pii, perms, countries, territories, bus, null);
