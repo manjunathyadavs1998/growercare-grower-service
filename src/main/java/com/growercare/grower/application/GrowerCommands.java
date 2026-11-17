@@ -27,6 +27,9 @@ import com.growercare.shard.ShardId;
 import com.growercare.shard.ShardRouter;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Objects;
+import java.util.TreeSet;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -183,7 +186,7 @@ public class GrowerCommands {
         var name = changes.displayName() == null ? current.displayName() : changes.displayName().strip();
         var language = changes.preferredLanguage() == null ? current.preferredLanguage() : changes.preferredLanguage();
 
-        var changed = new java.util.TreeSet<String>();   // sorted: a stable event payload
+        var changed = new TreeSet<String>();   // sorted: a stable event payload
         if (!name.equals(current.displayName())) {
             changed.add("displayName");
         }
@@ -193,7 +196,7 @@ public class GrowerCommands {
         if (territoryId != current.territoryId()) {
             changed.add("territoryId");
         }
-        if (!java.util.Objects.equals(partner, current.preferredPartnerOrgId())) {
+        if (!Objects.equals(partner, current.preferredPartnerOrgId())) {
             changed.add("preferredPartnerOrgId");
         }
         if (changed.isEmpty()) {
@@ -211,7 +214,7 @@ public class GrowerCommands {
             var payload = new LinkedHashMap<String, Object>();
             payload.put("growerId", Long.toString(growerId));
             payload.put("version", version);
-            payload.put("changedFields", java.util.List.copyOf(changed));
+            payload.put("changedFields", List.copyOf(changed));
             outbox.append(shard.schemaName() + ".outbox",
                     new OutboxWriter.Event("grower", Long.toString(growerId), "grower.updated", payload), TraceIds.currentOrNull());
             return growers.findById(shard, growerId).orElseThrow();
