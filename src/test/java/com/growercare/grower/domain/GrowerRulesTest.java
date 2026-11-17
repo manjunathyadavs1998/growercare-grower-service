@@ -31,7 +31,13 @@ class GrowerRulesTest {
                 org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 null", null, false),
                 org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 NUL inside", "Anil\u0000Shinde", false),
                 org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 newline inside", "Anil\nShinde", false),
-                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 accented letters", "Joaõ Silvá", true));
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 accented letters", "Joaõ Silvá", true),
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 C1 control U+0085", "Anil\u0085Shinde", false),
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 line separator U+2028", "Anil\u2028Shinde", false),
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 bidi override U+202E", "Anil\u202EShinde", false),
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 zero-width space U+200B", "Anil\u200BShinde", false),
+                org.junit.jupiter.params.provider.Arguments.argumentSet("GRW-R15 Devanagari with ZWJ/ZWNJ (legitimate)",
+                        "\u0915\u094D\u200D\u0937 \u0915\u094D\u200C\u0937", true));
     }
 
     @ParameterizedTest

@@ -13,7 +13,12 @@ import java.util.stream.Collectors;
 public final class GrowerRules {
 
     public static final int MAX_NAME = 120;
-    private static final Pattern CONTROL = Pattern.compile("\\p{Cntrl}");
+    /**
+     * Unicode control (Cc), format (Cf) and line/paragraph separator (Zl/Zp) characters: C0/C1 controls, NUL, U+2028,
+     * zero-width space, bidi overrides (U+202E can make a name display as something else). Zero-width joiner and
+     * non-joiner (U+200D/U+200C) stay allowed: Indic scripts use them inside ordinary names.
+     */
+    private static final Pattern CONTROL = Pattern.compile("[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}&&[^\\u200C\\u200D]]");
     private static final Pattern LANGUAGE = Pattern.compile("^([a-z]{2})(-[A-Z]{2})?$");
     private static final Set<String> ISO_LANGUAGES = Set.of(Locale.getISOLanguages());
 
@@ -29,7 +34,7 @@ public final class GrowerRules {
                 .collect(Collectors.joining(" "));
     }
 
-    /** R15: a display name is 1–120 characters after trimming and has no control characters (NUL, tab, newline…). */
+    /** R15: a display name is 1–120 characters after trimming and has no control, format or separator characters (NUL, newline, U+0085, U+2028, U+202E…). */
     public static boolean isValidName(String name) {
         return name != null && !name.isEmpty() && name.length() <= MAX_NAME && !CONTROL.matcher(name).find();
     }
