@@ -89,7 +89,7 @@ class GrowerRegistrationIT extends GrowerApiTestBase {
                 argumentSet("GRW-E25 R14 tm.in outside Maharashtra", TM_IN, Map.of("territoryId", "1005"), 404, "NOT_FOUND"),
                 argumentSet("GRW-E26 R14 care.in in a BR territory", CARE_IN, Map.of("territoryId", "2002"), 404, "NOT_FOUND"),
                 argumentSet("GRW-E27a R14 IN partner in a BR territory", RETAILER_IN, Map.of("territoryId", "2002"), 404, "NOT_FOUND"),
-                argumentSet("GRW-E14 R14 unknown territory", CARE_IN, Map.of("territoryId", "999999"), 404, "NOT_FOUND"),
+                argumentSet("GRW-E26a R14 unknown territory", CARE_IN, Map.of("territoryId", "999999"), 404, "NOT_FOUND"),
                 argumentSet("GRW-E27 R14 preferred partner of another country", CARE_IN, Map.of("preferredPartnerOrgId", "504"),
                         422, "BUSINESS_RULE_VIOLATION"),
                 argumentSet("GRW-E33 R4 admin.in has no grower:create", ADMIN_IN, Map.of(), 403, "PERMISSION_DENIED"));

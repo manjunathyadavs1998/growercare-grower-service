@@ -34,9 +34,13 @@ public final class GrowerRules {
                 .collect(Collectors.joining(" "));
     }
 
-    /** R15: a display name is 1–120 characters after trimming and has no control, format or separator characters (NUL, newline, U+0085, U+2028, U+202E…). */
-    public static boolean isValidName(String name) {
-        return name != null && !name.isEmpty() && name.length() <= MAX_NAME && !CONTROL.matcher(name).find();
+    /** R15: a display name is 1–120 characters after trimming, and the raw input has no control, format or separator characters (NUL, newline, U+0085, U+2028, U+202E…). */
+    public static boolean isValidName(String raw) {
+        if (raw == null || CONTROL.matcher(raw).find()) {   // checked on the raw input: strip() would hide edge controls
+            return false;
+        }
+        var name = raw.strip();
+        return !name.isEmpty() && name.length() <= MAX_NAME;
     }
 
     /** R15: an ISO 639-1 language, optionally with an ISO 3166 region ({@code mr}, {@code pt-BR}). */
