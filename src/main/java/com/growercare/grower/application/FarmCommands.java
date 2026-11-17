@@ -40,12 +40,15 @@ public class FarmCommands {
         }
     }
 
-    /** A merge patch: null = unchanged; {@code locationInPatch} with null coordinates clears the location. */
-    public record FarmChanges(String name, BigDecimal areaHa, List<String> crops, boolean locationInPatch,
+    /**
+     * A merge patch: null = unchanged. {@code clearLocation} is an explicit {@code "location": null}; any other location
+     * in the patch must carry both coordinates (R202), so {@code "location": {}} is a 400, never a silent clear.
+     */
+    public record FarmChanges(String name, BigDecimal areaHa, List<String> crops, boolean locationInPatch, boolean clearLocation,
                               BigDecimal latitude, BigDecimal longitude) {
         @Override
         public String toString() {
-            return "FarmChanges[crops=%s, locationInPatch=%s]".formatted(crops, locationInPatch);
+            return "FarmChanges[crops=%s, locationInPatch=%s, clearLocation=%s]".formatted(crops, locationInPatch, clearLocation);
         }
     }
 
@@ -118,8 +121,7 @@ public class FarmCommands {
         var crops = changes.crops() == null ? current.crops() : FarmRules.crops(changes.crops(), knownCrops(changes.crops()));
         Point location = current.location();
         if (changes.locationInPatch()) {
-            location = changes.latitude() == null && changes.longitude() == null ? null
-                    : FarmRules.location(changes.latitude(), changes.longitude());
+            location = changes.clearLocation() ? null : FarmRules.location(changes.latitude(), changes.longitude());
         }
         boolean changed = !name.equals(current.name()) || area.compareTo(current.areaHa()) != 0 || !crops.equals(current.crops())
                 || !samePoint(location, current.location());

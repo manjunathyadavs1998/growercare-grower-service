@@ -137,7 +137,7 @@ class FarmController {
         boolean inPatch = location != null;
         boolean clear = inPatch && location.isNull();
         return new FarmChanges(body.has("name") ? text(body, "name") : null, body.has("areaHa") ? decimal(body, "areaHa") : null,
-                body.has("crops") ? crops(body.get("crops")) : null, inPatch,
+                body.has("crops") ? crops(body.get("crops")) : null, inPatch, clear,
                 inPatch && !clear ? coordinate(location, "latitude") : null, inPatch && !clear ? coordinate(location, "longitude") : null);
     }
 

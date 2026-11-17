@@ -128,6 +128,7 @@ class FarmApiIT extends GrowerApiTestBase {
                 argumentSet("GRW-E203 no crops", Map.of("crops", List.of()), "crops"),
                 argumentSet("GRW-E203 duplicate crop", Map.of("crops", List.of("GRAPE", "GRAPE")), "crops"),
                 argumentSet("GRW-E203 unknown crop", Map.of("crops", List.of("FOO")), "crops[0]"),
+                argumentSet("GRW-E203 six crops", Map.of("crops", List.of("GRAPE", "ONION", "SOYBEAN", "RAGI", "PADDY", "COTTON")), "crops"),
                 argumentSet("GRW-E203 latitude 91", Map.of("location", Map.of("latitude", 91, "longitude", 73.8)), "location.latitude"),
                 argumentSet("GRW-E203 only longitude", Map.of("location", Map.of("longitude", 73.8)), "location"));
     }
@@ -206,6 +207,10 @@ class FarmApiIT extends GrowerApiTestBase {
         patchFarm(CARE_IN, grower, farmId, null, "{\"name\": \"No header\"}").andExpect(status().is(428));
         problem(patchFarm(CARE_IN, grower, farmId, "\"1\"", "{\"growerId\": \"1\"}"), 422, "BUSINESS_RULE_VIOLATION")
                 .andExpect(jsonPath("$.rule").value("grower.field-immutable"));
+        problem(patchFarm(CARE_IN, grower, farmId, "\"1\"", "{\"location\": {}}"), 400, "VALIDATION_FAILED")          // R202: not a clear
+                .andExpect(jsonPath("$.errors[0].field").value("location"));
+        problem(patchFarm(CARE_IN, grower, farmId, "\"1\"", "{\"location\": {\"latitude\": 18.5}}"), 400, "VALIDATION_FAILED")
+                .andExpect(jsonPath("$.errors[0].field").value("location"));
         patchFarm(CARE_IN, grower, farmId, "\"1\"", "{\"location\": null}").andExpect(status().isOk())
                 .andExpect(jsonPath("$.location").doesNotExist());
     }

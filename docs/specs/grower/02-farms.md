@@ -55,6 +55,7 @@
 | GRW-E208 | R207 | agro.in (FULL) · care.in (MASKED) | read 80011 | 18.520430, 73.856743 EXACT · 18.5, 73.9 DISTRICT |
 | GRW-E209 | R208 | grower.in1 | patch area 3.0 with `If-Match "0"` · same area again | 200 ETag "1", event `grower.farm.updated` · 200 ETag "1", no event |
 | GRW-E210 | R209 | grower.in1 | stale `If-Match` · none · `{"growerId": "1"}` | 412 · 428 · 422 `grower.field-immutable` |
+| GRW-E214 | R202/R208 | grower.in1 | patch `{"location": {}}` · `{"location": {"latitude": 18.5}}` · `{"location": null}` | 400 `location` · 400 `location` · 200, location cleared |
 | GRW-E211 | R210/R211 | grower.in1 | archive a farm · archive again · patch it | 200 ARCHIVED + event · 200, no event · 422 `grower.farm-archived` |
 | GRW-E212 | R212 | retailer.in (no `grower:update`) · care.br (Brazil, G1 out of scope) · admin.in | add a farm for G1 | 403 · 404 · 403 |
 | GRW-E213 | R213 | case-service client · care.in user · unknown farm | `GET /internal/growers/{G1}/farms/80011` | 200 exact view · 403 · 404 |
@@ -89,7 +90,7 @@ Ids are strings; `areaHa` is a decimal number with at most 2 fractional digits.
 ## 6. Traceability
 | Rule / Example | Test |
 |---|---|
-| R200–R212 / E200–E212 | `FarmApiIT`, `FarmRulesTest` (validation, rounding, request hash) |
+| R200–R212 / E200–E212, E214 | `FarmApiIT`, `FarmRulesTest` (validation, rounding, request hash) |
 | §3 contract | `GrowerOpenApiContractIT` (6 new operations) |
 | R213 / E213 | `InternalGrowerApiIT` (new rows) |
 | R220–R221 / E220–E221 | `GrowerSchemaMigrationIT` (new rows) |
