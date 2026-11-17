@@ -1,0 +1,409 @@
+{
+  "components" : {
+    "schemas" : {
+      "GrowerPage" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/GrowerView"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "GrowerReplicaView" : {
+        "properties" : {
+          "countryCode" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "growerId" : {
+            "type" : "string"
+          },
+          "phoneHmac" : {
+            "type" : "string"
+          },
+          "phoneLast4" : {
+            "type" : "string"
+          },
+          "preferredPartnerOrgId" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "territoryId" : {
+            "type" : "string"
+          },
+          "userId" : {
+            "type" : "string"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "GrowerView" : {
+        "properties" : {
+          "countryCode" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "growerId" : {
+            "type" : "string"
+          },
+          "onboardedByUserId" : {
+            "type" : "string"
+          },
+          "onboardedViaOrgId" : {
+            "type" : "string"
+          },
+          "onboardingChannel" : {
+            "type" : "string"
+          },
+          "phoneLast4" : {
+            "type" : "string"
+          },
+          "preferredLanguage" : {
+            "type" : "string"
+          },
+          "preferredPartnerOrgId" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "territoryId" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "userId" : {
+            "type" : "string"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "JsonNode" : {
+        "properties" : {
+          "array" : {
+            "type" : "boolean"
+          },
+          "bigDecimal" : {
+            "type" : "boolean"
+          },
+          "bigInteger" : {
+            "type" : "boolean"
+          },
+          "binary" : {
+            "type" : "boolean"
+          },
+          "boolean" : {
+            "type" : "boolean"
+          },
+          "container" : {
+            "type" : "boolean"
+          },
+          "double" : {
+            "type" : "boolean"
+          },
+          "embeddedValue" : {
+            "type" : "boolean"
+          },
+          "empty" : {
+            "type" : "boolean"
+          },
+          "float" : {
+            "type" : "boolean"
+          },
+          "floatingPointNumber" : {
+            "type" : "boolean"
+          },
+          "int" : {
+            "type" : "boolean"
+          },
+          "integralNumber" : {
+            "type" : "boolean"
+          },
+          "long" : {
+            "type" : "boolean"
+          },
+          "missingNode" : {
+            "type" : "boolean"
+          },
+          "nodeType" : {
+            "enum" : [ "ARRAY", "BINARY", "BOOLEAN", "MISSING", "NULL", "NUMBER", "OBJECT", "POJO", "STRING" ],
+            "type" : "string"
+          },
+          "null" : {
+            "type" : "boolean"
+          },
+          "number" : {
+            "type" : "boolean"
+          },
+          "object" : {
+            "type" : "boolean"
+          },
+          "pojo" : {
+            "type" : "boolean"
+          },
+          "short" : {
+            "type" : "boolean"
+          },
+          "string" : {
+            "type" : "boolean"
+          },
+          "textual" : {
+            "deprecated" : true,
+            "type" : "boolean"
+          },
+          "valueNode" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "RegisterRequest" : {
+        "properties" : {
+          "displayName" : {
+            "maxLength" : 120,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "phone" : {
+            "maxLength" : 32,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "preferredLanguage" : {
+            "maxLength" : 8,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "preferredPartnerOrgId" : {
+            "pattern" : "^[1-9][0-9]{0,18}$",
+            "type" : "string"
+          },
+          "territoryId" : {
+            "minLength" : 1,
+            "pattern" : "^[1-9][0-9]{0,18}$",
+            "type" : "string"
+          }
+        },
+        "required" : [ "displayName", "phone", "preferredLanguage", "territoryId" ],
+        "type" : "object"
+      },
+      "SearchRequest" : {
+        "properties" : {
+          "countryCode" : {
+            "pattern" : "^[A-Z]{2}$",
+            "type" : "string"
+          },
+          "phone" : {
+            "maxLength" : 32,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "countryCode", "phone" ],
+        "type" : "object"
+      }
+    },
+    "securitySchemes" : {
+      "bearer" : {
+        "bearerFormat" : "JWT",
+        "description" : "Keycloak access token (audience gc-api)",
+        "scheme" : "bearer",
+        "type" : "http"
+      }
+    }
+  },
+  "info" : {
+    "description" : "GrowerCare grower-service. Errors are RFC 9457 problem+json; IDs are strings.",
+    "title" : "grower-service",
+    "version" : "v1"
+  },
+  "openapi" : "3.1.0",
+  "paths" : {
+    "/growers" : {
+      "post" : {
+        "operationId" : "register",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GrowerView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "grower-controller" ]
+      }
+    },
+    "/growers/search" : {
+      "post" : {
+        "operationId" : "search",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GrowerPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "grower-controller" ]
+      }
+    },
+    "/growers/{growerId}" : {
+      "get" : {
+        "operationId" : "get",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GrowerView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "grower-controller" ]
+      },
+      "patch" : {
+        "operationId" : "update",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GrowerView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "grower-controller" ]
+      }
+    },
+    "/internal/growers/{growerId}" : {
+      "get" : {
+        "operationId" : "replica",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GrowerReplicaView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "internal-grower-controller" ]
+      }
+    }
+  },
+  "security" : [ {
+    "bearer" : [ ]
+  } ],
+  "servers" : [ {
+    "description" : "Generated server url",
+    "url" : "http://localhost"
+  } ]
+}

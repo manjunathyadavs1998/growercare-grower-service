@@ -19,11 +19,13 @@ import java.net.URI;
 import java.time.Clock;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.databind.JsonNode;
 
 /** SPEC-GRW-01 §3. Translation only: HTTP ⇄ commands/queries; rules and authorization live in the application layer. */
 @RestController
@@ -54,6 +56,15 @@ class GrowerController {
     @GetMapping("/growers/{growerId}")
     ResponseEntity<GrowerView> get(@PathVariable String growerId) {
         var view = view(queries.get(growerIdOrNotFound(growerId)));
+        return ResponseEntity.ok().eTag(etag(view.version())).body(view);
+    }
+
+    /** R23–R29: JSON merge patch of the editable fields under {@code If-Match}. */
+    @PatchMapping("/growers/{growerId}")
+    ResponseEntity<GrowerView> update(@PathVariable String growerId, @RequestHeader("If-Match") String ifMatch,
+                                      @RequestBody(required = false) JsonNode body) {
+        var id = growerIdOrNotFound(growerId);
+        var view = view(commands.update(id, GrowerDtos.version(ifMatch), GrowerDtos.changes(body)));
         return ResponseEntity.ok().eTag(etag(view.version())).body(view);
     }
 

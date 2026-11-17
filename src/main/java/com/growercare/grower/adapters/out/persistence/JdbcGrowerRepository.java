@@ -33,6 +33,24 @@ class JdbcGrowerRepository implements GrowerRepository {
     }
 
     @Override
+    public Optional<Replica> findReplica(ShardId shard, long growerId) {
+        return jdbc.sql(sql.render("grower.findReplica", shard.schemaName())).param("growerId", growerId)
+                .query((rs, n) -> new Replica(grower(rs, n), rs.getBytes("phone_hmac"))).optional();
+    }
+
+    @Override
+    public Optional<Integer> updateProfile(ShardId shard, long growerId, int expectedVersion, ProfileRow row) {
+        return jdbc.sql(sql.render("grower.updateProfile", shard.schemaName()))
+                .param("territoryId", row.territoryId())
+                .param("displayName", row.displayName())
+                .param("preferredLanguage", row.preferredLanguage())
+                .param("preferredPartnerOrgId", row.preferredPartnerOrgId())
+                .param("growerId", growerId)
+                .param("expectedVersion", expectedVersion)
+                .query(Integer.class).optional();
+    }
+
+    @Override
     public Optional<GrowerRecord> findByPhone(ShardId shard, byte[] phoneHmac) {
         return jdbc.sql(sql.render("grower.findByPhone", shard.schemaName())).param("phoneHmac", phoneHmac).query(GROWER).optional();
     }
