@@ -19,7 +19,7 @@
 | GRW-R301 | a GROWER user without a grower · a staff or partner user | `GET /growers/me` | 404 · 404 |
 | GRW-R302 | any authenticated user | `GET /consent-notices?country=IN&language=mr` | 200 `{items: [{purpose, version, title, body}]}`, the current notice per purpose (SPEC-GRW-03 D8) |
 | GRW-R303 | a language without notices in that country · unknown country · current notices without their text yet | same | 404 (a version is never offered without the text the grower agrees to). The same holds for consent (SPEC-GRW-03 D8: such a version cannot be the "current" one) and for the code's language (R112: falls back to English) |
-| GRW-R304 | a partner user | `GET /growers?partner=mine[&cursor]` | 200 `{items, nextCursor}`: growers its org onboarded or is preferred by, newest first, masked as for that partner |
+| GRW-R304 | a partner user | `GET /growers?partner=mine[&cursor]` | 200 `{items, nextCursor}`: growers its org onboarded or is preferred by, newest first by **when the partner got the grower** (registration, onboarding or a preference change; growers indexed by the backfill count from their registration), masked as for that partner |
 | GRW-R305 | staff · grower | `GET /growers?partner=mine` | 403 (staff use phone search; growers have `/me`) |
 | GRW-R306 | registration with a partner, assisted registration by a partner, or a preferred-partner change | write | `dir.partner_grower` rows added in the same transaction; on a change, the old preferred partner's row is removed unless that partner also onboarded the grower |
 | GRW-R307 | the database | migration | `ref.consent_notice` + `title`, `body`; `dir.partner_grower` with a backfill of existing growers; dev seed placeholder texts |

@@ -73,19 +73,14 @@ public class GrowerQueries {
         var rows = growers.partnerGrowers(principal.partnerOrgId(), after, PARTNER_PAGE + 1);
         var page = rows.size() > PARTNER_PAGE ? rows.subList(0, PARTNER_PAGE) : rows;
         // one query per shard (a page spans up to 20 of the 64 shards), then back into the index order
-        var byShard = new java.util.LinkedHashMap<com.growercare.shard.ShardId, java.util.List<Long>>();
-        for (var row : page) {
-            var shard = router.forId(row.growerId());
-            if (shard.isPresent()) {
-                byShard.computeIfAbsent(shard.get(), s -> new java.util.ArrayList<>()).add(row.growerId());
-            }
-        }
-        var found = new java.util.HashMap<Long, GrowerRecord>();
-        for (var entry : byShard.entrySet()) {
-            for (var grower : growers.findByIds(entry.getKey(), entry.getValue())) {
-                found.put(grower.growerId(), grower);
-            }
-        }
+        java.util.Map<com.growercare.shard.ShardId, java.util.List<Long>> byShard = page.stream()
+                .map(GrowerRepository.PartnerGrower::growerId)
+                .flatMap(id -> router.forId(id).map(shard -> java.util.Map.entry(shard, id)).stream())
+                .collect(java.util.stream.Collectors.groupingBy(java.util.Map.Entry::getKey, java.util.LinkedHashMap::new,
+                        java.util.stream.Collectors.mapping(java.util.Map.Entry::getValue, java.util.stream.Collectors.toList())));
+        java.util.Map<Long, GrowerRecord> found = byShard.entrySet().stream()
+                .flatMap(e -> growers.findByIds(e.getKey(), e.getValue()).stream())
+                .collect(java.util.stream.Collectors.toMap(GrowerRecord::growerId, g -> g));
         var items = page.stream()
                 .map(r -> found.get(r.growerId()))
                 .filter(java.util.Objects::nonNull)
