@@ -174,7 +174,8 @@ class GrowerSchemaMigrationIT {
                     argumentSet("GRW-E130 delete verifications", "DELETE FROM in_s05.grower_verification"),
                     argumentSet("GRW-E130 change consent notices", "UPDATE ref.consent_notice SET version = 'x'"),
                     argumentSet("GRW-E220 delete farms", "DELETE FROM in_s05.farm"),
-                    argumentSet("GRW-E220 change crop codes", "INSERT INTO ref.crop (crop_code, name) VALUES ('EVIL', 'x')"));
+                    argumentSet("GRW-E220 change crop codes", "INSERT INTO ref.crop (crop_code, name) VALUES ('EVIL', 'x')"),
+                    argumentSet("GRW-E307 rewrite the partner index", "UPDATE dir.partner_grower SET partner_org_id = 1"));
         }
 
         @ParameterizedTest
@@ -249,6 +250,17 @@ class GrowerSchemaMigrationIT {
                     argumentSet("GRW-E221 80012 of G2", "in_s30", 80012L, 110165911145445378L, "ONION"),
                     argumentSet("GRW-E221 80013 of G4", "br_s41", 80013L, 110165911142966276L, "SOYBEAN"),
                     argumentSet("GRW-E221 80014 of G3", "in_s40", 80014L, 110165911145455619L, "RAGI"));
+        }
+
+        @ParameterizedTest(name = "GRW-E307 {0}")
+        @org.junit.jupiter.params.provider.CsvSource(textBlock = """
+                G1 preferred by 501,  501, 110165911145454593
+                G2 preferred by 502,  502, 110165911145445378
+                G3 onboarded via 502, 502, 110165911145455619
+                """)
+        void seedGrowersAreInThePartnerIndex(String name, long org, long growerId) {
+            assertThat(owner.sql("SELECT count(*) FROM dir.partner_grower WHERE partner_org_id = ? AND grower_id = ?")
+                    .params(org, growerId).query(Long.class).single()).isEqualTo(1);
         }
 
         @ParameterizedTest

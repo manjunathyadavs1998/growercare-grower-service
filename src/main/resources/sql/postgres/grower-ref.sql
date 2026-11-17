@@ -18,9 +18,18 @@ SELECT partner_org_id, country_code, status FROM ref.partner_org WHERE partner_o
 SELECT n.version
   FROM ref.consent_notice n
  WHERE n.country_code = :countryCode AND n.purpose = :purpose AND n.language = :language AND n.effective_from <= :now
+   AND n.title IS NOT NULL AND n.body IS NOT NULL          -- SPEC-GRW-06 R303: no agreeing to a version without its text
  ORDER BY n.effective_from DESC
  LIMIT 1
 
 -- SPEC-GRW-02 D4: which crop codes exist.
 -- name: knownCrops
 SELECT c.crop_code FROM ref.crop c WHERE c.crop_code = ANY(:codes::varchar[])
+
+-- SPEC-GRW-06 R302: the current notice per purpose for a country and language, with its text.
+-- name: currentNotices
+SELECT DISTINCT ON (n.purpose) n.purpose, n.version, n.title, n.body
+  FROM ref.consent_notice n
+ WHERE n.country_code = :countryCode AND n.language = :language AND n.effective_from <= :now
+   AND n.title IS NOT NULL AND n.body IS NOT NULL          -- R303: a version without its text is never offered
+ ORDER BY n.purpose, n.effective_from DESC

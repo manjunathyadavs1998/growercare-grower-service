@@ -169,6 +169,29 @@ final class GrowerDtos {
         }
     }
 
+    /** SPEC-GRW-06 R304: an opaque keyset cursor "createdAt|growerId", base64url. */
+    static String partnerCursor(com.growercare.grower.application.port.GrowerRepository.PartnerGrower last) {
+        if (last == null) {
+            return null;
+        }
+        var text = last.createdAt() + "|" + last.growerId();
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    static com.growercare.grower.application.port.GrowerRepository.PartnerGrower partnerCursor(String cursor) {
+        if (cursor == null) {
+            return null;
+        }
+        try {
+            var text = new String(Base64.getUrlDecoder().decode(cursor), java.nio.charset.StandardCharsets.UTF_8);
+            int sep = text.indexOf('|');
+            return new com.growercare.grower.application.port.GrowerRepository.PartnerGrower(
+                    Long.parseLong(text.substring(sep + 1)), Instant.parse(text.substring(0, sep)));
+        } catch (RuntimeException e) {
+            throw ValidationException.of("cursor", "is not a cursor returned by this API");
+        }
+    }
+
     static String etag(int version) {
         return "\"" + version + "\"";
     }

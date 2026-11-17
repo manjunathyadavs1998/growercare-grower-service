@@ -122,6 +122,13 @@ public class GrowerCommands {
                 if (self) {
                     growers.linkUser(principal.userId(), id, country);
                 }
+                // SPEC-GRW-06 R306: the partner index in the same transaction
+                if (viaOrg != null) {
+                    growers.indexPartner(viaOrg, id, country);
+                }
+                if (cmd.preferredPartnerOrgId() != null) {
+                    growers.indexPartner(cmd.preferredPartnerOrgId(), id, country);
+                }
                 if (!growers.insertIdempotency(cmd.idempotencyKey(), principal.userId(), hash, id)) {
                     status.setRollbackOnly();          // another request with the same key won the race
                     return null;
@@ -211,6 +218,16 @@ public class GrowerCommands {
         return tx.execute(status -> {
             int version = growers.updateProfile(shard, growerId, expectedVersion, row)
                     .orElseThrow(() -> new StaleVersionException("Grower", expectedVersion));
+            if (changed.contains("preferredPartnerOrgId")) {                                           // SPEC-GRW-06 R306
+                // the onboarding org never changes, so the old preferred partner keeps the row only if it onboarded the grower
+                var old = current.preferredPartnerOrgId();
+                if (old != null && !old.equals(current.onboardedViaOrgId())) {
+                    growers.unindexPartner(old, growerId);
+                }
+                if (partner != null) {
+                    growers.indexPartner(partner, growerId, current.countryCode());
+                }
+            }
             var payload = new LinkedHashMap<String, Object>();
             payload.put("growerId", Long.toString(growerId));
             payload.put("version", version);

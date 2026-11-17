@@ -20,11 +20,32 @@ public class ConsentQueries {
     private final GrowerAccess access;
     private final ShardRouter router;
 
-    public ConsentQueries(GrowerRepository growers, ConsentRepository consents, GrowerAccess access, ShardRouter router) {
+    private final com.growercare.grower.application.port.ReferenceData ref;
+    private final java.time.Clock clock;
+
+    public ConsentQueries(GrowerRepository growers, ConsentRepository consents, GrowerAccess access, ShardRouter router,
+                          com.growercare.grower.application.port.ReferenceData ref, java.time.Clock clock) {
         this.growers = growers;
         this.consents = consents;
         this.access = access;
         this.router = router;
+        this.ref = ref;
+        this.clock = clock;
+    }
+
+    /**
+     * SPEC-GRW-06 R302/R303: the current notice per purpose, with its text, for a country and language. Not personal
+     * data: any authenticated user. Nothing for that country and language is 404.
+     */
+    public List<com.growercare.grower.application.port.ReferenceData.Notice> notices(String countryCode, String language) {
+        if (countryCode == null || !countryCode.matches("^[A-Z]{2}$") || language == null || !language.matches("^[a-z]{2}(-[A-Z]{2})?$")) {
+            throw new NotFoundException("Notice");
+        }
+        var notices = ref.currentNotices(countryCode, language, clock.instant());
+        if (notices.isEmpty()) {
+            throw new NotFoundException("Notice");
+        }
+        return notices;
     }
 
     @RequiresPermission(GrowerAccess.READ)

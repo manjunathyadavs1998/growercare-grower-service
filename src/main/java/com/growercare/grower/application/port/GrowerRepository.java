@@ -33,6 +33,9 @@ public interface GrowerRepository {
 
     Optional<GrowerRecord> findById(ShardId shard, long growerId);
 
+    /** SPEC-GRW-06: several growers of one shard in one query (any order). */
+    java.util.List<GrowerRecord> findByIds(ShardId shard, java.util.Collection<Long> growerIds);
+
     /** R42: the record plus its phone HMAC, for the internal replica view only. */
     record Replica(GrowerRecord grower, byte[] phoneHmac) { }
 
@@ -61,4 +64,18 @@ public interface GrowerRepository {
 
     /** @return false when another request already used the key (the caller rolls back and replays) */
     boolean insertIdempotency(UUID key, long userId, byte[] hash, long growerId);
+
+    /** SPEC-GRW-06 R300: the grower linked to a GROWER user. */
+    Optional<Long> growerOfUser(long userId);
+
+    /** SPEC-GRW-06 D3: the partner onboarded the grower or is its preferred partner (idempotent). */
+    void indexPartner(long partnerOrgId, long growerId, String countryCode);
+
+    /** SPEC-GRW-06 R306: the partner is neither any more. */
+    void unindexPartner(long partnerOrgId, long growerId);
+
+    /** A partner index row: newest first; the keyset of the next page is (createdAt, growerId) of the last row. */
+    record PartnerGrower(long growerId, java.time.Instant createdAt) { }
+
+    java.util.List<PartnerGrower> partnerGrowers(long partnerOrgId, PartnerGrower after, int limit);
 }

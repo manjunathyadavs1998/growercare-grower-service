@@ -53,6 +53,26 @@ class GrowerController {
         return ResponseEntity.created(URI.create("/growers/" + view.growerId())).eTag(etag(view.version())).body(view);
     }
 
+    /** SPEC-GRW-06 R300: the caller's own grower (a literal path, so it wins over {growerId}). */
+    @GetMapping("/growers/me")
+    ResponseEntity<GrowerView> me() {
+        var view = view(queries.me());
+        return ResponseEntity.ok().eTag(etag(view.version())).body(view);
+    }
+
+    record PartnerGrowerPage(java.util.List<GrowerView> items, String nextCursor) { }
+
+    /** SPEC-GRW-06 R304: the caller's partner org's growers. Only {@code partner=mine}: the org is never a request input. */
+    @GetMapping("/growers")
+    PartnerGrowerPage partnerGrowers(@org.springframework.web.bind.annotation.RequestParam String partner,
+                                     @org.springframework.web.bind.annotation.RequestParam(required = false) String cursor) {
+        if (!"mine".equals(partner)) {
+            throw com.growercare.common.error.ValidationException.of("partner", "must be mine");
+        }
+        var page = queries.partnerGrowers(GrowerDtos.partnerCursor(cursor));
+        return new PartnerGrowerPage(page.items().stream().map(this::view).toList(), GrowerDtos.partnerCursor(page.next()));
+    }
+
     @GetMapping("/growers/{growerId}")
     ResponseEntity<GrowerView> get(@PathVariable String growerId) {
         var view = view(queries.get(growerIdOrNotFound(growerId)));

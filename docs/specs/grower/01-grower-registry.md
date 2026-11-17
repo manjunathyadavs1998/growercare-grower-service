@@ -155,7 +155,7 @@ Names, users, territories, partners and last-4 digits match case-service's repli
 | GRW-E62 | R30 | care.in | unregistered number | `{items:[]}` |
 | GRW-E63 | R30 | retailer2.in | phone of G1 | `{items:[]}` (out of scope, same answer as unregistered) |
 | GRW-E64 | R32 | care.br | phone of G1, `countryCode "IN"` | `{items:[]}` |
-| GRW-E65 | R31 | care.in | `GET /growers?phone=…` | 404 or 405 (no such route); the service log contains no phone digits |
+| GRW-E65 | R31 | care.in | `GET /growers?phone=…` | refused: 404 or 405 (no such route), or 400 since SPEC-GRW-06 (that path is the partner list and needs `partner=mine`); never a search; the service log contains no phone digits |
 
 ### Phone normalisation and protection (unit level, D3 · R15 phone field · R30)
 | Example | Rule | Country plan | Input | Expected |

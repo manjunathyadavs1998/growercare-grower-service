@@ -49,6 +49,14 @@ class JdbcReferenceData implements ReferenceData {
     }
 
     @Override
+    public java.util.List<Notice> currentNotices(String countryCode, String language, java.time.Instant now) {
+        return jdbc.sql(sql.get("grower-ref.currentNotices"))
+                .param("countryCode", countryCode).param("language", language).param("now", java.sql.Timestamp.from(now))
+                .query((rs, n) -> new Notice(rs.getString("purpose"), rs.getString("version"), rs.getString("title"), rs.getString("body")))
+                .list();
+    }
+
+    @Override
     public java.util.Set<String> knownCrops(java.util.Collection<String> codes) {
         var wanted = codes.stream().filter(java.util.Objects::nonNull).distinct().toArray(String[]::new);
         if (wanted.length == 0) {
