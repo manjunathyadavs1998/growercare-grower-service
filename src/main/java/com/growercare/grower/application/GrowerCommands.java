@@ -204,7 +204,8 @@ public class GrowerCommands {
         }
 
         var row = new GrowerRepository.ProfileRow(territoryId, name, language, partner);
-        tx.executeWithoutResult(status -> {
+        // The response is read inside the transaction, so it is exactly the row this update wrote (not a later writer's).
+        return tx.execute(status -> {
             int version = growers.updateProfile(shard, growerId, expectedVersion, row)
                     .orElseThrow(() -> new StaleVersionException("Grower", expectedVersion));
             var payload = new LinkedHashMap<String, Object>();
@@ -213,8 +214,8 @@ public class GrowerCommands {
             payload.put("changedFields", java.util.List.copyOf(changed));
             outbox.append(shard.schemaName() + ".outbox",
                     new OutboxWriter.Event("grower", Long.toString(growerId), "grower.updated", payload), TraceIds.currentOrNull());
+            return growers.findById(shard, growerId).orElseThrow();
         });
-        return growers.findById(shard, growerId).orElseThrow();
     }
 
     /** R16/R17: same key + same request → the original grower (its shard decoded from its id); other request → 409. */

@@ -11,8 +11,4 @@ public record GrowerChanges(
         Long territoryId,
         boolean partnerInPatch,
         Long preferredPartnerOrgId) {
-
-    public boolean isEmpty() {
-        return displayName == null && preferredLanguage == null && territoryId == null && !partnerInPatch;
-    }
 }
