@@ -64,7 +64,16 @@ class GrowerAppSupportIT extends GrowerApiTestBase {
 
     static Stream<Arguments> noNotices() {
         return Stream.of(argumentSet("GRW-E303 a language without notices", "IN", "ta"),
-                argumentSet("GRW-E303 an unknown country", "XX", "en"));
+                argumentSet("GRW-E303 an unknown country", "XX", "en"),
+                argumentSet("GRW-E303 a current version without its text yet (India, Kannada)", "IN", "kn"));
+    }
+
+    /** A notice version legal has not written the text for yet (only for this row's language). */
+    @org.junit.jupiter.api.BeforeEach
+    void noticeWithoutText() {
+        owner.sql("""
+                INSERT INTO ref.consent_notice (country_code, purpose, language, version, effective_from)
+                VALUES ('IN', 'SERVICE', 'kn', 'in-2026-11', TIMESTAMPTZ '2026-11-01T00:00:00Z') ON CONFLICT DO NOTHING""").update();
     }
 
     @ParameterizedTest

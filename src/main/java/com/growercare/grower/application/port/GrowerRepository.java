@@ -33,6 +33,9 @@ public interface GrowerRepository {
 
     Optional<GrowerRecord> findById(ShardId shard, long growerId);
 
+    /** SPEC-GRW-06: several growers of one shard in one query (any order). */
+    java.util.List<GrowerRecord> findByIds(ShardId shard, java.util.Collection<Long> growerIds);
+
     /** R42: the record plus its phone HMAC, for the internal replica view only. */
     record Replica(GrowerRecord grower, byte[] phoneHmac) { }
 

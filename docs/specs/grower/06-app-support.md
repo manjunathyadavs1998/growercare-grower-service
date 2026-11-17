@@ -18,7 +18,7 @@
 | GRW-R300 | a GROWER user with a registered grower | `GET /growers/me` | 200 grower view + `ETag` |
 | GRW-R301 | a GROWER user without a grower · a staff or partner user | `GET /growers/me` | 404 · 404 |
 | GRW-R302 | any authenticated user | `GET /consent-notices?country=IN&language=mr` | 200 `{items: [{purpose, version, title, body}]}`, the current notice per purpose (SPEC-GRW-03 D8) |
-| GRW-R303 | a language without notices in that country · unknown country | same | 404 |
+| GRW-R303 | a language without notices in that country · unknown country · current notices without their text yet | same | 404 (a version is never offered without the text the grower agrees to). The same holds for consent (SPEC-GRW-03 D8: such a version cannot be the "current" one) and for the code's language (R112: falls back to English) |
 | GRW-R304 | a partner user | `GET /growers?partner=mine[&cursor]` | 200 `{items, nextCursor}`: growers its org onboarded or is preferred by, newest first, masked as for that partner |
 | GRW-R305 | staff · grower | `GET /growers?partner=mine` | 403 (staff use phone search; growers have `/me`) |
 | GRW-R306 | registration with a partner, assisted registration by a partner, or a preferred-partner change | write | `dir.partner_grower` rows added (and the old PREFERRED row removed on a change) in the same transaction |
@@ -30,7 +30,7 @@
 | GRW-E300 | R300 | grower.in1 | `GET /growers/me` | 200, G1 |
 | GRW-E301 | R301 | a test grower user with no grower · care.in · retailer.in | `GET /growers/me` | 404 ×3 |
 | GRW-E302 | R302 | grower.in1 | IN / mr · BR / pt | 3 notices `in-2026-11` with Marathi placeholder titles · 3 notices `br-2026-11` |
-| GRW-E303 | R303 | grower.in1 | IN / `ta` · `XX` / en | 404 · 404 |
+| GRW-E303 | R303 | grower.in1 | IN / `ta` · `XX` / en · IN / `kn` (a current version without its text) | 404 · 404 · 404 |
 | GRW-E304 | R304 | retailer.in (501) · retailer2.in (502) | `partner=mine` | G1 (preferred 501) and growers it onboarded · G2 and G3 |
 | GRW-E305 | R305 | care.in · grower.in1 | `partner=mine` | 403 · 403 |
 | GRW-E306 | R306 | care.in | change G1's preferred partner to 502, then back | retailer2.in's list gains G1, then loses it |

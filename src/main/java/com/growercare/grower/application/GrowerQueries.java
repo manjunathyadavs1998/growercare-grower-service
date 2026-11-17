@@ -72,8 +72,14 @@ public class GrowerQueries {
         }
         var rows = growers.partnerGrowers(principal.partnerOrgId(), after, PARTNER_PAGE + 1);
         var page = rows.size() > PARTNER_PAGE ? rows.subList(0, PARTNER_PAGE) : rows;
+        // one query per shard (a page spans up to 20 of the 64 shards), then back into the index order
+        var byShard = new java.util.LinkedHashMap<com.growercare.shard.ShardId, java.util.List<Long>>();
+        page.forEach(r -> router.forId(r.growerId()).ifPresent(shard -> byShard.computeIfAbsent(shard, s -> new java.util.ArrayList<>()).add(r.growerId())));
+        var found = new java.util.HashMap<Long, GrowerRecord>();
+        byShard.forEach((shard, ids) -> growers.findByIds(shard, ids).forEach(g -> found.put(g.growerId(), g)));
         var items = page.stream()
-                .flatMap(r -> router.forId(r.growerId()).flatMap(shard -> growers.findById(shard, r.growerId())).stream())
+                .map(r -> found.get(r.growerId()))
+                .filter(java.util.Objects::nonNull)
                 .filter(g -> access.permits(principal, GrowerAccess.READ, g.access()))
                 .toList();
         return new PartnerPage(items, rows.size() > PARTNER_PAGE ? page.getLast() : null);

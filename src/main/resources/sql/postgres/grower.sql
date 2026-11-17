@@ -45,3 +45,11 @@ RETURNING grower_id
 -- R13: the primary key on phone_hmac rejects a second grower with the same phone, also under concurrency.
 -- name: insertDirectory
 INSERT INTO {shard}.phone_directory (phone_hmac, grower_id) VALUES (:phoneHmac, :growerId)
+
+-- SPEC-GRW-06 R304: a page of a partner's growers, one query per shard.
+-- name: findByIds
+SELECT g.grower_id, g.country_code, g.territory_id, g.user_id, g.display_name, g.phone_last4, g.preferred_language,
+       g.preferred_partner_org_id, g.status, g.onboarding_channel, g.onboarded_by_user_id, g.onboarded_via_org_id,
+       g.version, g.created_at, g.updated_at
+  FROM {shard}.grower g
+ WHERE g.grower_id = ANY(:growerIds)

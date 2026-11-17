@@ -33,6 +33,15 @@ class JdbcGrowerRepository implements GrowerRepository {
     }
 
     @Override
+    public java.util.List<GrowerRecord> findByIds(ShardId shard, java.util.Collection<Long> growerIds) {
+        if (growerIds.isEmpty()) {
+            return java.util.List.of();
+        }
+        return jdbc.sql(sql.render("grower.findByIds", shard.schemaName()))
+                .param("growerIds", growerIds.toArray(Long[]::new)).query(GROWER).list();
+    }
+
+    @Override
     public Optional<Replica> findReplica(ShardId shard, long growerId) {
         return jdbc.sql(sql.render("grower.findReplica", shard.schemaName())).param("growerId", growerId)
                 .query((rs, n) -> new Replica(grower(rs, n), rs.getBytes("phone_hmac"))).optional();
