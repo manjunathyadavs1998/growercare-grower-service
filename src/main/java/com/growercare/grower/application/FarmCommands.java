@@ -163,8 +163,9 @@ public class FarmCommands {
         return shard;
     }
 
+    /** Only a list of a valid size reaches the database; any other size fails R202 in {@link FarmRules#crops} first. */
     private java.util.Set<String> knownCrops(List<String> crops) {
-        return crops == null ? java.util.Set.of() : ref.knownCrops(crops);
+        return crops == null || crops.isEmpty() || crops.size() > FarmRules.MAX_CROPS ? java.util.Set.of() : ref.knownCrops(crops);
     }
 
     private static void requireNotInactive(String status) {

@@ -40,7 +40,7 @@ CREATE TABLE ${shard_schema}.farm_idempotency (
     farm_id              bigint      NOT NULL,
     created_at           timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT farm_idempotency_pk PRIMARY KEY (grower_id, idempotency_key),
-    CONSTRAINT farm_idempotency_farm_fk FOREIGN KEY (farm_id) REFERENCES ${shard_schema}.farm (farm_id),
+    CONSTRAINT farm_idempotency_farm_fk FOREIGN KEY (farm_id, grower_id) REFERENCES ${shard_schema}.farm (farm_id, grower_id),
     CONSTRAINT farm_idempotency_hash_check CHECK (octet_length(request_hash) = 32)
 );
 CREATE INDEX farm_idempotency_created_ix ON ${shard_schema}.farm_idempotency (created_at);
