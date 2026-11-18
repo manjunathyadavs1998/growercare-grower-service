@@ -1,6 +1,7 @@
 package com.growercare.grower.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -33,7 +34,7 @@ class GrowerContactIT extends GrowerApiTestBase {
         long before = audits(g1);
         mvc.perform(get("/internal/growers/{id}/contact", Long.toString(g1)).header("Authorization", NOTIFICATION_SERVICE))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.phone").value("+919876543210"))
                 .andExpect(jsonPath("$.language").value("mr"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));

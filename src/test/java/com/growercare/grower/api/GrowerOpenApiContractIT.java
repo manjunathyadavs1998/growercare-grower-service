@@ -10,6 +10,7 @@ import com.growercare.testsupport.OpenApiContract;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.test.context.TestPropertySource;
@@ -48,8 +49,8 @@ class GrowerOpenApiContractIT extends GrowerApiTestBase {
     }
 
     /** SPEC-GRW-07 R323 (GRW-E323): the JSON-tree bodies are described by their fields, not as Jackson's JsonNode. */
-    @org.junit.jupiter.params.ParameterizedTest(name = "{0}")
-    @org.junit.jupiter.params.provider.CsvSource({
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
             "GRW-E323 farm create,  FarmCreateRequest, crops",
             "GRW-E323 farm patch,   FarmPatch,         areaHa",
             "GRW-E323 grower patch, GrowerPatch,       preferredLanguage"})

@@ -3,6 +3,7 @@ package com.growercare.grower.adapters.in.web;
 import io.swagger.v3.core.converter.ModelConverters;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
@@ -37,7 +38,7 @@ class ContractBodies {
         };
     }
 
-    private static void body(OpenAPI api, String path, Function<io.swagger.v3.oas.models.PathItem, Operation> operation,
+    private static void body(OpenAPI api, String path, Function<PathItem, Operation> operation,
                              String mediaType, String schema) {
         var item = api.getPaths() == null ? null : api.getPaths().get(path);
         var op = item == null ? null : operation.apply(item);
