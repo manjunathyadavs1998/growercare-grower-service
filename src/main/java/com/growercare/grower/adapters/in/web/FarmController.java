@@ -31,8 +31,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import tools.jackson.databind.JsonNode;
 
 /** SPEC-GRW-02 §3: farms. Translation only; rules live in {@link FarmCommands} / {@link FarmRules}. */
@@ -70,7 +68,7 @@ class FarmController {
 
     @PostMapping("/growers/{growerId}/farms")
     ResponseEntity<FarmView> create(@PathVariable String growerId, @RequestHeader("Idempotency-Key") String idempotencyKey,
-                                    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = "application/json", schema = @Schema(implementation = PatchDocs.FarmCreate.class))) @RequestBody JsonNode body) {
+                                    @RequestBody JsonNode body) {
         var id = growerIdOrNotFound(growerId);
         var result = commands.create(id, newFarm(body), GrowerDtos.uuid(idempotencyKey, "Idempotency-Key"));
         var view = view(result.farm());
@@ -94,7 +92,7 @@ class FarmController {
     @PatchMapping("/growers/{growerId}/farms/{farmId}")
     ResponseEntity<FarmView> update(@PathVariable String growerId, @PathVariable String farmId,
                                     @RequestHeader("If-Match") String ifMatch,
-                                    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = "application/merge-patch+json", schema = @Schema(implementation = PatchDocs.FarmPatch.class))) @RequestBody(required = false) JsonNode body) {
+                                    @RequestBody(required = false) JsonNode body) {
         var view = view(commands.update(growerIdOrNotFound(growerId), growerIdOrNotFound(farmId), GrowerDtos.version(ifMatch), changes(body)));
         return ResponseEntity.ok().eTag(etag(view.version())).body(view);
     }

@@ -25,8 +25,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import tools.jackson.databind.JsonNode;
 
 /** SPEC-GRW-01 §3. Translation only: HTTP ⇄ commands/queries; rules and authorization live in the application layer. */
@@ -84,7 +82,7 @@ class GrowerController {
     /** R23–R29: JSON merge patch of the editable fields under {@code If-Match}. */
     @PatchMapping("/growers/{growerId}")
     ResponseEntity<GrowerView> update(@PathVariable String growerId, @RequestHeader("If-Match") String ifMatch,
-                                      @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = "application/merge-patch+json", schema = @Schema(implementation = PatchDocs.GrowerPatch.class))) @RequestBody(required = false) JsonNode body) {
+                                      @RequestBody(required = false) JsonNode body) {
         var id = growerIdOrNotFound(growerId);
         var view = view(commands.update(id, GrowerDtos.version(ifMatch), GrowerDtos.changes(body)));
         return ResponseEntity.ok().eTag(etag(view.version())).body(view);

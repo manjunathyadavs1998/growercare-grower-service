@@ -47,7 +47,7 @@ public interface GrowerRepository {
         }
     }
 
-    java.util.Optional<SealedContact> contact(com.growercare.shard.ShardId shard, long growerId);
+    Optional<SealedContact> contact(ShardId shard, long growerId);
 
     void auditContactRead(long growerId, String clientId);
 

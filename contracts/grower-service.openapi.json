@@ -680,7 +680,8 @@
                 "$ref" : "#/components/schemas/GrowerPatch"
               }
             }
-          }
+          },
+          "required" : false
         },
         "responses" : {
           "200" : {
@@ -904,7 +905,8 @@
                 "$ref" : "#/components/schemas/FarmPatch"
               }
             }
-          }
+          },
+          "required" : false
         },
         "responses" : {
           "200" : {
