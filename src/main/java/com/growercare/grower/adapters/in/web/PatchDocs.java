@@ -1,5 +1,6 @@
 package com.growercare.grower.adapters.in.web;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,10 +18,11 @@ final class PatchDocs {
 
     @Schema(name = "FarmCreateRequest", requiredProperties = {"name", "areaHa", "crops"})
     record FarmCreate(@Schema(maxLength = 120) String name, @Schema(minimum = "0.01", maximum = "100000", multipleOf = 0.01, description = "hectares, > 0 with at most 2 decimals (R202)") BigDecimal areaHa,
-                      @Schema(description = "1 to 5 crop codes (SPEC-GRW-02 D4)") List<String> crops, Location location) { }
+                      @ArraySchema(minItems = 1, maxItems = 5, uniqueItems = true, schema = @Schema(description = "a crop code (SPEC-GRW-02 D4)")) List<String> crops,
+                      Location location) { }
 
     @Schema(name = "FarmPatch", description = "JSON merge patch: absent = unchanged; location null clears it")
-    record FarmPatch(@Schema(maxLength = 120) String name, @Schema(minimum = "0.01", maximum = "100000", multipleOf = 0.01, description = "hectares, > 0 with at most 2 decimals (R202)") BigDecimal areaHa, List<String> crops, Location location) { }
+    record FarmPatch(@Schema(maxLength = 120) String name, @Schema(minimum = "0.01", maximum = "100000", multipleOf = 0.01, description = "hectares, > 0 with at most 2 decimals (R202)") BigDecimal areaHa, @ArraySchema(minItems = 1, maxItems = 5, uniqueItems = true) List<String> crops, Location location) { }
 
     @Schema(name = "GrowerPatch", description = "JSON merge patch: absent = unchanged; preferredPartnerOrgId null clears it")
     record GrowerPatch(@Schema(maxLength = 120) String displayName, @Schema(maxLength = 8) String preferredLanguage,

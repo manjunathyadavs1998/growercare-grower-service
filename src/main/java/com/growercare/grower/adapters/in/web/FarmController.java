@@ -56,14 +56,13 @@ class FarmController {
     private final FarmCommands commands;
     private final FarmQueries queries;
     private final Clock clock;
-
     private final InternalAccess internal;
 
     FarmController(FarmCommands commands, FarmQueries queries, Clock clock, InternalAccess internal) {
-        this.internal = internal;
         this.commands = commands;
         this.queries = queries;
         this.clock = clock;
+        this.internal = internal;
     }
 
     @PostMapping("/growers/{growerId}/farms")

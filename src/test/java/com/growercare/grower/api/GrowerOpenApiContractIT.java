@@ -61,6 +61,9 @@ class GrowerOpenApiContractIT extends GrowerApiTestBase {
             var area = schemas.path(schema).path("properties").path("areaHa");
             assertThat(area.path("minimum").asDouble(-1)).as("%s.areaHa > 0 with 2 decimals, as R202 enforces", schema).isEqualTo(0.01);
             assertThat(area.path("multipleOf").asDouble(-1)).isEqualTo(0.01);
+            var crops = schemas.path(schema).path("properties").path("crops");
+            assertThat(crops.path("minItems").asInt(-1)).as("%s.crops 1..5 (R202)", schema).isEqualTo(1);
+            assertThat(crops.path("maxItems").asInt(-1)).isEqualTo(5);
         }
     }
 

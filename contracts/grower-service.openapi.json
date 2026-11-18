@@ -94,11 +94,14 @@
             "type" : "number"
           },
           "crops" : {
-            "description" : "1 to 5 crop codes (SPEC-GRW-02 D4)",
             "items" : {
+              "description" : "a crop code (SPEC-GRW-02 D4)",
               "type" : "string"
             },
-            "type" : "array"
+            "maxItems" : 5,
+            "minItems" : 1,
+            "type" : "array",
+            "uniqueItems" : true
           },
           "location" : {
             "$ref" : "#/components/schemas/Location"
@@ -136,7 +139,10 @@
             "items" : {
               "type" : "string"
             },
-            "type" : "array"
+            "maxItems" : 5,
+            "minItems" : 1,
+            "type" : "array",
+            "uniqueItems" : true
           },
           "location" : {
             "$ref" : "#/components/schemas/Location"
