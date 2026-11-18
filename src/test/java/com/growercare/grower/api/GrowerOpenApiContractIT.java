@@ -57,6 +57,11 @@ class GrowerOpenApiContractIT extends GrowerApiTestBase {
         var schemas = api().path("components").path("schemas");
         assertThat(schemas.path(schema).path("properties").has(property)).as("%s has %s", schema, property).isTrue();
         assertThat(schemas.has("JsonNode")).as("no JsonNode bean in the contract").isFalse();
+        if (property.equals("areaHa") || schema.equals("FarmCreateRequest")) {
+            var area = schemas.path(schema).path("properties").path("areaHa");
+            assertThat(area.path("minimum").asDouble(-1)).as("%s.areaHa > 0 with 2 decimals, as R202 enforces", schema).isEqualTo(0.01);
+            assertThat(area.path("multipleOf").asDouble(-1)).isEqualTo(0.01);
+        }
     }
 
     @ParameterizedTest

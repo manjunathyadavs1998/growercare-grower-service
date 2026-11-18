@@ -87,8 +87,10 @@
       "FarmCreateRequest" : {
         "properties" : {
           "areaHa" : {
+            "description" : "hectares, > 0 with at most 2 decimals (R202)",
             "maximum" : 100000,
-            "minimum" : 0,
+            "minimum" : 0.01,
+            "multipleOf" : 0.01,
             "type" : "number"
           },
           "crops" : {
@@ -124,6 +126,10 @@
         "description" : "JSON merge patch: absent = unchanged; location null clears it",
         "properties" : {
           "areaHa" : {
+            "description" : "hectares, > 0 with at most 2 decimals (R202)",
+            "maximum" : 100000,
+            "minimum" : 0.01,
+            "multipleOf" : 0.01,
             "type" : "number"
           },
           "crops" : {

@@ -17,7 +17,7 @@
 |---|---|---|---|
 | GRW-R320 | a `GC_CONTACT_CLIENTS` service token | `GET /internal/growers/{id}/contact` | 200 `{phone, language, status: ACTIVE}`; audit row |
 | GRW-R321 | grower not ACTIVE · unknown | contact | 404 (same body) |
-| GRW-R322 | a user token · a service client not in `GC_CONTACT_CLIENTS` (e.g. case-service) | contact | 401 · 403 |
+| GRW-R322 | a user token · a service client not in `GC_CONTACT_CLIENTS` (e.g. case-service) · no token | contact | 403 · 403 · 401 (as every /internal route, SPEC-GRW-01 R42) |
 | GRW-R323 | the contract | generated | the three bodies list their fields (name, areaHa, crops, location; displayName, preferredLanguage, preferredPartnerOrgId, territoryId…) |
 
 ## 2. Examples
@@ -25,7 +25,7 @@
 |---|---|---|---|
 | GRW-E320 | R320 | notification-service, G1 | `+919876543210`, `mr`; one audit row without the number |
 | GRW-E321 | R321 | G3 (PENDING_CONSENT) · 999 | 404 · 404 |
-| GRW-E322 | R322 | grower.in1 token · case-service token | 401 · 403 |
+| GRW-E322 | R322 | grower.in1 token · case-service token · no token | 403 · 403 · 401 |
 | GRW-E323 | R323 | the exported contract | `FarmCreateRequest`, `FarmPatch`, `GrowerPatch` schemas with their properties |
 
 ## 6. Traceability
