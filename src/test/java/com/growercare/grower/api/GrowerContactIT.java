@@ -35,7 +35,7 @@ class GrowerContactIT extends GrowerApiTestBase {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
                 .andExpect(jsonPath("$.phone").value("+919876543210"))
-                .andExpect(jsonPath("$.language").isNotEmpty())
+                .andExpect(jsonPath("$.language").value("mr"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
         assertThat(audits(g1)).isEqualTo(before + 1);
         var stored = owner.sql("SELECT row_to_json(r)::text FROM dir.grower_contact_read r WHERE grower_id = ? ORDER BY read_id DESC LIMIT 1")
