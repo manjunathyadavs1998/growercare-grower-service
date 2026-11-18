@@ -41,3 +41,7 @@ SELECT p.grower_id, p.created_at
         OR (p.created_at, p.grower_id) < (CAST(:afterCreatedAt AS timestamptz), CAST(:afterGrowerId AS bigint)))
  ORDER BY p.created_at DESC, p.grower_id DESC
  LIMIT :limit
+
+-- SPEC-GRW-07 D2: one row per contact read; never the number.
+-- name: auditContactRead
+INSERT INTO dir.grower_contact_read (grower_id, client_id) VALUES (:growerId, :clientId)

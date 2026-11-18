@@ -56,3 +56,6 @@ Indexes for the scope filters (R2/R3): `grower_territory_ix (territory_id, growe
 
 ## 5. Dev seed
 Four growers, G1–G4 (SPEC-GRW-01 §2). Their HMACs and ciphertexts use the **dev keys** in `.env.example`, and their ids are encoded for the D1 shard of each phone: IN 39, 30, 40 and BR 41. GRW-E96 checks the ids, the shards, the directory rows and decryption. SPEC-GRW-03 R132 adds consent notices (common dev seed V1001: IN en/hi/mr, BR pt/en; `in-2025-01` is an outdated IN version) and the SERVICE consent of G1, G2 and G4 (shard dev seed V1001); G3 stays `PENDING_CONSENT`. SPEC-GRW-02 R221 adds farms 80011–80014 (G1, G2, G4, G3) with case-service's ids (shard dev seed V1002).
+
+### `dir.grower_contact_read` (common V7, SPEC-GRW-07 D2)
+One row per decryption of a phone for a sender: `grower_id`, `client_id`, `read_at`; never the number. Append-only for the runtime role (INSERT, SELECT); index `(grower_id, read_at DESC)`.

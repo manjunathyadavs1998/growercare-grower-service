@@ -65,7 +65,7 @@ class FarmController {
 
     @PostMapping("/growers/{growerId}/farms")
     ResponseEntity<FarmView> create(@PathVariable String growerId, @RequestHeader("Idempotency-Key") String idempotencyKey,
-                                    @RequestBody JsonNode body) {
+                                    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PatchDocs.FarmCreate.class))) @RequestBody JsonNode body) {
         var id = growerIdOrNotFound(growerId);
         var result = commands.create(id, newFarm(body), GrowerDtos.uuid(idempotencyKey, "Idempotency-Key"));
         var view = view(result.farm());
@@ -88,7 +88,8 @@ class FarmController {
 
     @PatchMapping("/growers/{growerId}/farms/{farmId}")
     ResponseEntity<FarmView> update(@PathVariable String growerId, @PathVariable String farmId,
-                                    @RequestHeader("If-Match") String ifMatch, @RequestBody(required = false) JsonNode body) {
+                                    @RequestHeader("If-Match") String ifMatch,
+                                    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/merge-patch+json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PatchDocs.FarmPatch.class))) @RequestBody(required = false) JsonNode body) {
         var view = view(commands.update(growerIdOrNotFound(growerId), growerIdOrNotFound(farmId), GrowerDtos.version(ifMatch), changes(body)));
         return ResponseEntity.ok().eTag(etag(view.version())).body(view);
     }

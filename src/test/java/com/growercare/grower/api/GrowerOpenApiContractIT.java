@@ -47,6 +47,18 @@ class GrowerOpenApiContractIT extends GrowerApiTestBase {
                 argumentSet("PLAT-E21 GET /consent-notices", "/consent-notices", "get"));
     }
 
+    /** SPEC-GRW-07 R323 (GRW-E323): the JSON-tree bodies are described by their fields, not as Jackson's JsonNode. */
+    @org.junit.jupiter.params.ParameterizedTest(name = "{0}")
+    @org.junit.jupiter.params.provider.CsvSource({
+            "GRW-E323 farm create,  FarmCreateRequest, crops",
+            "GRW-E323 farm patch,   FarmPatch,         areaHa",
+            "GRW-E323 grower patch, GrowerPatch,       preferredLanguage"})
+    void bodiesAreDescribedByTheirFields(String name, String schema, String property) throws Exception {
+        var schemas = api().path("components").path("schemas");
+        assertThat(schemas.path(schema).path("properties").has(property)).as("%s has %s", schema, property).isTrue();
+        assertThat(schemas.has("JsonNode")).as("no JsonNode bean in the contract").isFalse();
+    }
+
     @ParameterizedTest
     @MethodSource("operations")
     void documentedOperation(String path, String method) throws Exception {

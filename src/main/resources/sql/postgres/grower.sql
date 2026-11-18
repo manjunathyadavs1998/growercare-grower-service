@@ -53,3 +53,9 @@ SELECT g.grower_id, g.country_code, g.territory_id, g.user_id, g.display_name, g
        g.version, g.created_at, g.updated_at
   FROM {shard}.grower g
  WHERE g.grower_id = ANY(:growerIds)
+
+-- SPEC-GRW-07 R320: what a sender needs (the sealed phone, the language, the status).
+-- name: contact
+SELECT g.phone_enc, g.phone_key_id, g.preferred_language, g.status
+  FROM {shard}.grower g
+ WHERE g.grower_id = :growerId

@@ -70,6 +70,45 @@
         },
         "type" : "object"
       },
+      "ContactView" : {
+        "properties" : {
+          "language" : {
+            "type" : "string"
+          },
+          "phone" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "FarmCreateRequest" : {
+        "properties" : {
+          "areaHa" : {
+            "maximum" : 100000,
+            "minimum" : 0,
+            "type" : "number"
+          },
+          "crops" : {
+            "description" : "1 to 5 crop codes (SPEC-GRW-02 D4)",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "location" : {
+            "$ref" : "#/components/schemas/Location"
+          },
+          "name" : {
+            "maxLength" : 120,
+            "type" : "string"
+          }
+        },
+        "required" : [ "areaHa", "crops", "name" ],
+        "type" : "object"
+      },
       "FarmPage" : {
         "properties" : {
           "items" : {
@@ -77,6 +116,28 @@
               "$ref" : "#/components/schemas/FarmView"
             },
             "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "FarmPatch" : {
+        "description" : "JSON merge patch: absent = unchanged; location null clears it",
+        "properties" : {
+          "areaHa" : {
+            "type" : "number"
+          },
+          "crops" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "location" : {
+            "$ref" : "#/components/schemas/Location"
+          },
+          "name" : {
+            "maxLength" : 120,
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -132,6 +193,28 @@
               "$ref" : "#/components/schemas/GrowerView"
             },
             "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "GrowerPatch" : {
+        "description" : "JSON merge patch: absent = unchanged; preferredPartnerOrgId null clears it",
+        "properties" : {
+          "displayName" : {
+            "maxLength" : 120,
+            "type" : "string"
+          },
+          "preferredLanguage" : {
+            "maxLength" : 8,
+            "type" : "string"
+          },
+          "preferredPartnerOrgId" : {
+            "pattern" : "^[1-9][0-9]{0,18}$",
+            "type" : "string"
+          },
+          "territoryId" : {
+            "pattern" : "^[1-9][0-9]{0,18}$",
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -225,81 +308,18 @@
         },
         "type" : "object"
       },
-      "JsonNode" : {
+      "Location" : {
+        "description" : "A point; both coordinates or neither",
         "properties" : {
-          "array" : {
-            "type" : "boolean"
+          "latitude" : {
+            "maximum" : 90,
+            "minimum" : -90,
+            "type" : "number"
           },
-          "bigDecimal" : {
-            "type" : "boolean"
-          },
-          "bigInteger" : {
-            "type" : "boolean"
-          },
-          "binary" : {
-            "type" : "boolean"
-          },
-          "boolean" : {
-            "type" : "boolean"
-          },
-          "container" : {
-            "type" : "boolean"
-          },
-          "double" : {
-            "type" : "boolean"
-          },
-          "embeddedValue" : {
-            "type" : "boolean"
-          },
-          "empty" : {
-            "type" : "boolean"
-          },
-          "float" : {
-            "type" : "boolean"
-          },
-          "floatingPointNumber" : {
-            "type" : "boolean"
-          },
-          "int" : {
-            "type" : "boolean"
-          },
-          "integralNumber" : {
-            "type" : "boolean"
-          },
-          "long" : {
-            "type" : "boolean"
-          },
-          "missingNode" : {
-            "type" : "boolean"
-          },
-          "nodeType" : {
-            "enum" : [ "ARRAY", "BINARY", "BOOLEAN", "MISSING", "NULL", "NUMBER", "OBJECT", "POJO", "STRING" ],
-            "type" : "string"
-          },
-          "null" : {
-            "type" : "boolean"
-          },
-          "number" : {
-            "type" : "boolean"
-          },
-          "object" : {
-            "type" : "boolean"
-          },
-          "pojo" : {
-            "type" : "boolean"
-          },
-          "short" : {
-            "type" : "boolean"
-          },
-          "string" : {
-            "type" : "boolean"
-          },
-          "textual" : {
-            "deprecated" : true,
-            "type" : "boolean"
-          },
-          "valueNode" : {
-            "type" : "boolean"
+          "longitude" : {
+            "maximum" : 180,
+            "minimum" : -180,
+            "type" : "number"
           }
         },
         "type" : "object"
@@ -649,9 +669,9 @@
         } ],
         "requestBody" : {
           "content" : {
-            "application/json" : {
+            "application/merge-patch+json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/JsonNode"
+                "$ref" : "#/components/schemas/GrowerPatch"
               }
             }
           }
@@ -794,7 +814,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/JsonNode"
+                "$ref" : "#/components/schemas/FarmCreateRequest"
               }
             }
           },
@@ -873,9 +893,9 @@
         } ],
         "requestBody" : {
           "content" : {
-            "application/json" : {
+            "application/merge-patch+json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/JsonNode"
+                "$ref" : "#/components/schemas/FarmPatch"
               }
             }
           }
@@ -1031,6 +1051,32 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/GrowerReplicaView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "internal-grower-controller" ]
+      }
+    },
+    "/internal/growers/{growerId}/contact" : {
+      "get" : {
+        "operationId" : "contact",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "growerId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ContactView"
                 }
               }
             },

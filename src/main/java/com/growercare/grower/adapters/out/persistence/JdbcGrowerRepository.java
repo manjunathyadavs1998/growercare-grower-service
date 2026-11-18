@@ -178,4 +178,17 @@ class JdbcGrowerRepository implements GrowerRepository {
                 rs.getTimestamp("created_at").toInstant(),
                 rs.getTimestamp("updated_at").toInstant());
     }
+
+    @Override
+    public java.util.Optional<SealedContact> contact(com.growercare.shard.ShardId shard, long growerId) {
+        return jdbc.sql(sql.render("grower.contact", shard.schemaName())).param("growerId", growerId)
+                .query((rs, n) -> new SealedContact(rs.getBytes("phone_enc"), rs.getString("phone_key_id"),
+                        rs.getString("preferred_language"), rs.getString("status")))
+                .optional();
+    }
+
+    @Override
+    public void auditContactRead(long growerId, String clientId) {
+        jdbc.sql(sql.get("grower-dir.auditContactRead")).param("growerId", growerId).param("clientId", clientId).update();
+    }
 }

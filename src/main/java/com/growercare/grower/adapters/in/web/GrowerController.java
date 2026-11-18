@@ -82,7 +82,7 @@ class GrowerController {
     /** R23–R29: JSON merge patch of the editable fields under {@code If-Match}. */
     @PatchMapping("/growers/{growerId}")
     ResponseEntity<GrowerView> update(@PathVariable String growerId, @RequestHeader("If-Match") String ifMatch,
-                                      @RequestBody(required = false) JsonNode body) {
+                                      @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/merge-patch+json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PatchDocs.GrowerPatch.class))) @RequestBody(required = false) JsonNode body) {
         var id = growerIdOrNotFound(growerId);
         var view = view(commands.update(id, GrowerDtos.version(ifMatch), GrowerDtos.changes(body)));
         return ResponseEntity.ok().eTag(etag(view.version())).body(view);
