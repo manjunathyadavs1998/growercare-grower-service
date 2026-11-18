@@ -191,5 +191,4 @@ class JdbcGrowerRepository implements GrowerRepository {
                 rs.getTimestamp("created_at").toInstant(),
                 rs.getTimestamp("updated_at").toInstant());
     }
-
 }
