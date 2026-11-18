@@ -63,6 +63,20 @@ class GrowerContactIT extends GrowerApiTestBase {
                 argumentSet("GRW-E322 no token", (Supplier<String>) () -> null, 401));
     }
 
+    static Stream<Arguments> replicaRoutes() {
+        var g1 = Long.toString(SeedGrowers.G1.growerId());
+        return Stream.of(
+                argumentSet("GRW-E324 the grower replica view", "/internal/growers/" + g1),
+                argumentSet("GRW-E324 the farm replica view", "/internal/growers/" + g1 + "/farms/80011"));
+    }
+
+    /** SPEC-GRW-07 D1a: a sender reads phones and nothing else. */
+    @ParameterizedTest
+    @MethodSource("replicaRoutes")
+    void aSenderCannotReadTheReplicaViews(String path) throws Exception {
+        mvc.perform(get(path).header("Authorization", NOTIFICATION_SERVICE)).andExpect(status().isForbidden());
+    }
+
     @ParameterizedTest
     @MethodSource("notAllowed")
     void onlyContactClientsReadPhones(Supplier<String> bearer, int expected) throws Exception {

@@ -12,6 +12,7 @@ IAM_CLIENT_ID: grower-service
 IAM_CLIENT_SECRET: test-secret
 GC_INTERNAL_CLIENTS: case-service,notification-service
 GC_CONTACT_CLIENTS: notification-service
+GC_REPLICA_CLIENTS: case-service
 REDIS_HOST: set-by-testcontainers.invalid
 REDIS_PASSWORD: set-by-testcontainers
 # the dev keys from .env.example, so the dev-seed growers decrypt (SPEC-GRW-01 D3)

@@ -31,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import tools.jackson.databind.JsonNode;
 
 /** SPEC-GRW-02 §3: farms. Translation only; rules live in {@link FarmCommands} / {@link FarmRules}. */
@@ -57,7 +59,10 @@ class FarmController {
     private final FarmQueries queries;
     private final Clock clock;
 
-    FarmController(FarmCommands commands, FarmQueries queries, Clock clock) {
+    private final InternalAccess internal;
+
+    FarmController(FarmCommands commands, FarmQueries queries, Clock clock, InternalAccess internal) {
+        this.internal = internal;
         this.commands = commands;
         this.queries = queries;
         this.clock = clock;
@@ -65,7 +70,7 @@ class FarmController {
 
     @PostMapping("/growers/{growerId}/farms")
     ResponseEntity<FarmView> create(@PathVariable String growerId, @RequestHeader("Idempotency-Key") String idempotencyKey,
-                                    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PatchDocs.FarmCreate.class))) @RequestBody JsonNode body) {
+                                    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = "application/json", schema = @Schema(implementation = PatchDocs.FarmCreate.class))) @RequestBody JsonNode body) {
         var id = growerIdOrNotFound(growerId);
         var result = commands.create(id, newFarm(body), GrowerDtos.uuid(idempotencyKey, "Idempotency-Key"));
         var view = view(result.farm());
@@ -89,7 +94,7 @@ class FarmController {
     @PatchMapping("/growers/{growerId}/farms/{farmId}")
     ResponseEntity<FarmView> update(@PathVariable String growerId, @PathVariable String farmId,
                                     @RequestHeader("If-Match") String ifMatch,
-                                    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/merge-patch+json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PatchDocs.FarmPatch.class))) @RequestBody(required = false) JsonNode body) {
+                                    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = "application/merge-patch+json", schema = @Schema(implementation = PatchDocs.FarmPatch.class))) @RequestBody(required = false) JsonNode body) {
         var view = view(commands.update(growerIdOrNotFound(growerId), growerIdOrNotFound(farmId), GrowerDtos.version(ifMatch), changes(body)));
         return ResponseEntity.ok().eTag(etag(view.version())).body(view);
     }
@@ -103,6 +108,7 @@ class FarmController {
     /** R213: the exact service view. */
     @GetMapping("/internal/growers/{growerId}/farms/{farmId}")
     FarmView replica(@PathVariable String growerId, @PathVariable String farmId) {
+        internal.requireReplicaReader();                                    // SPEC-GRW-07 D1: replica readers only
         return FarmView.of(queries.replica(growerIdOrNotFound(growerId), growerIdOrNotFound(farmId)), true);
     }
 
