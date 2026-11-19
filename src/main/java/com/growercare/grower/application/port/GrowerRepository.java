@@ -39,6 +39,18 @@ public interface GrowerRepository {
     /** R42: the record plus its phone HMAC, for the internal replica view only. */
     record Replica(GrowerRecord grower, byte[] phoneHmac) { }
 
+    /** SPEC-GRW-07: the sealed phone with its key id, the language and the status (toString never shows the bytes). */
+    record SealedContact(byte[] phoneCiphertext, String keyId, String language, String status) {
+        @Override
+        public String toString() {
+            return "SealedContact[keyId=" + keyId + ", language=" + language + ", status=" + status + "]";
+        }
+    }
+
+    Optional<SealedContact> contact(ShardId shard, long growerId);
+
+    void auditContactRead(long growerId, String clientId);
+
     Optional<Replica> findReplica(ShardId shard, long growerId);
 
     /** The editable fields after an update (R23). */

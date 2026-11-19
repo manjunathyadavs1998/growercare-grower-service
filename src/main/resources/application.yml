@@ -8,7 +8,12 @@ gc.required-properties: >-
   spring.security.oauth2.client.registration.iam.client-id, spring.security.oauth2.client.registration.iam.client-secret,
   spring.security.oauth2.client.provider.keycloak.token-uri,
   gc.iam.base-url, gc.notification.base-url, spring.data.redis.host, spring.data.redis.password, gc.security.internal-clients,
-  gc.phone.hmac-key, gc.phone.encryption-key, gc.phone.encryption-key-id
+  gc.phone.hmac-key, gc.phone.encryption-key, gc.phone.encryption-key-id, gc.contact-clients, gc.replica-clients
+
+# SPEC-GRW-07 D1: of the internal clients, those that may read a grower's phone (senders)
+gc.contact-clients: ${GC_CONTACT_CLIENTS}
+# of the internal clients, those that may read the grower and farm replica views (SPEC-GRW-01 R42, GRW-02 R213)
+gc.replica-clients: ${GC_REPLICA_CLIENTS}
 
 server:
   port: ${SERVER_PORT:8084}

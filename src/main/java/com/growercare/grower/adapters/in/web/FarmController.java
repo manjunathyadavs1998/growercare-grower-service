@@ -56,11 +56,13 @@ class FarmController {
     private final FarmCommands commands;
     private final FarmQueries queries;
     private final Clock clock;
+    private final InternalAccess internal;
 
-    FarmController(FarmCommands commands, FarmQueries queries, Clock clock) {
+    FarmController(FarmCommands commands, FarmQueries queries, Clock clock, InternalAccess internal) {
         this.commands = commands;
         this.queries = queries;
         this.clock = clock;
+        this.internal = internal;
     }
 
     @PostMapping("/growers/{growerId}/farms")
@@ -88,7 +90,8 @@ class FarmController {
 
     @PatchMapping("/growers/{growerId}/farms/{farmId}")
     ResponseEntity<FarmView> update(@PathVariable String growerId, @PathVariable String farmId,
-                                    @RequestHeader("If-Match") String ifMatch, @RequestBody(required = false) JsonNode body) {
+                                    @RequestHeader("If-Match") String ifMatch,
+                                    @RequestBody(required = false) JsonNode body) {
         var view = view(commands.update(growerIdOrNotFound(growerId), growerIdOrNotFound(farmId), GrowerDtos.version(ifMatch), changes(body)));
         return ResponseEntity.ok().eTag(etag(view.version())).body(view);
     }
@@ -102,6 +105,7 @@ class FarmController {
     /** R213: the exact service view. */
     @GetMapping("/internal/growers/{growerId}/farms/{farmId}")
     FarmView replica(@PathVariable String growerId, @PathVariable String farmId) {
+        internal.requireReplicaReader();                                    // SPEC-GRW-07 D1: replica readers only
         return FarmView.of(queries.replica(growerIdOrNotFound(growerId), growerIdOrNotFound(farmId)), true);
     }
 

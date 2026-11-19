@@ -11,6 +11,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.test.context.TestPropertySource;
 import tools.jackson.databind.JsonNode;
@@ -45,6 +46,28 @@ class GrowerOpenApiContractIT extends GrowerApiTestBase {
                 argumentSet("PLAT-E21 GET /growers/me", "/growers/me", "get"),
                 argumentSet("PLAT-E21 GET /growers?partner=mine", "/growers", "get"),
                 argumentSet("PLAT-E21 GET /consent-notices", "/consent-notices", "get"));
+    }
+
+    /** SPEC-GRW-07 R323 (GRW-E323): the JSON-tree bodies are described by their fields, not as Jackson's JsonNode. */
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "GRW-E323 farm create,  FarmCreateRequest, name areaHa crops location",
+            "GRW-E323 farm patch,   FarmPatch,         name areaHa crops location",
+            "GRW-E323 grower patch, GrowerPatch,       displayName preferredLanguage preferredPartnerOrgId territoryId"})
+    void bodiesAreDescribedByTheirFields(String name, String schema, String properties) throws Exception {
+        var schemas = api().path("components").path("schemas");
+        for (var property : properties.split(" ")) {
+            assertThat(schemas.path(schema).path("properties").has(property)).as("%s has %s", schema, property).isTrue();
+        }
+        assertThat(schemas.has("JsonNode")).as("no JsonNode bean in the contract").isFalse();
+        if (schema.startsWith("Farm")) {
+            var area = schemas.path(schema).path("properties").path("areaHa");
+            assertThat(area.path("minimum").asDouble(-1)).as("%s.areaHa > 0 with 2 decimals, as R202 enforces", schema).isEqualTo(0.01);
+            assertThat(area.path("multipleOf").asDouble(-1)).isEqualTo(0.01);
+            var crops = schemas.path(schema).path("properties").path("crops");
+            assertThat(crops.path("minItems").asInt(-1)).as("%s.crops 1..5 (R202)", schema).isEqualTo(1);
+            assertThat(crops.path("maxItems").asInt(-1)).isEqualTo(5);
+        }
     }
 
     @ParameterizedTest

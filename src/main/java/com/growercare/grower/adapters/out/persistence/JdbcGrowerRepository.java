@@ -28,6 +28,19 @@ class JdbcGrowerRepository implements GrowerRepository {
     }
 
     @Override
+    public Optional<SealedContact> contact(ShardId shard, long growerId) {
+        return jdbc.sql(sql.render("grower.contact", shard.schemaName())).param("growerId", growerId)
+                .query((rs, n) -> new SealedContact(rs.getBytes("phone_enc"), rs.getString("phone_key_id"),
+                        rs.getString("preferred_language"), rs.getString("status")))
+                .optional();
+    }
+
+    @Override
+    public void auditContactRead(long growerId, String clientId) {
+        jdbc.sql(sql.get("grower-dir.auditContactRead")).param("growerId", growerId).param("clientId", clientId).update();
+    }
+
+    @Override
     public Optional<GrowerRecord> findById(ShardId shard, long growerId) {
         return jdbc.sql(sql.render("grower.findById", shard.schemaName())).param("growerId", growerId).query(GROWER).optional();
     }
