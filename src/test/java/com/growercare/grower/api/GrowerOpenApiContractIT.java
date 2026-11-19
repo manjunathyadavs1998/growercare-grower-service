@@ -51,14 +51,16 @@ class GrowerOpenApiContractIT extends GrowerApiTestBase {
     /** SPEC-GRW-07 R323 (GRW-E323): the JSON-tree bodies are described by their fields, not as Jackson's JsonNode. */
     @ParameterizedTest(name = "{0}")
     @CsvSource({
-            "GRW-E323 farm create,  FarmCreateRequest, crops",
-            "GRW-E323 farm patch,   FarmPatch,         areaHa",
-            "GRW-E323 grower patch, GrowerPatch,       preferredLanguage"})
-    void bodiesAreDescribedByTheirFields(String name, String schema, String property) throws Exception {
+            "GRW-E323 farm create,  FarmCreateRequest, name areaHa crops location",
+            "GRW-E323 farm patch,   FarmPatch,         name areaHa crops location",
+            "GRW-E323 grower patch, GrowerPatch,       displayName preferredLanguage preferredPartnerOrgId territoryId"})
+    void bodiesAreDescribedByTheirFields(String name, String schema, String properties) throws Exception {
         var schemas = api().path("components").path("schemas");
-        assertThat(schemas.path(schema).path("properties").has(property)).as("%s has %s", schema, property).isTrue();
+        for (var property : properties.split(" ")) {
+            assertThat(schemas.path(schema).path("properties").has(property)).as("%s has %s", schema, property).isTrue();
+        }
         assertThat(schemas.has("JsonNode")).as("no JsonNode bean in the contract").isFalse();
-        if (property.equals("areaHa") || schema.equals("FarmCreateRequest")) {
+        if (schema.startsWith("Farm")) {
             var area = schemas.path(schema).path("properties").path("areaHa");
             assertThat(area.path("minimum").asDouble(-1)).as("%s.areaHa > 0 with 2 decimals, as R202 enforces", schema).isEqualTo(0.01);
             assertThat(area.path("multipleOf").asDouble(-1)).isEqualTo(0.01);
