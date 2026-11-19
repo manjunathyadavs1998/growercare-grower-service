@@ -11,7 +11,7 @@
 | D1a | **Each internal route group has its own allow-list:** `GC_REPLICA_CLIENTS` (case-service) for the grower and farm replica views, `GC_CONTACT_CLIENTS` (notification-service) for the contact. `GC_INTERNAL_CLIENTS` only admits the token; a sender never reads replicas (with the phone HMAC), a replica reader never reads phones | Least privilege (review of this spec's PR) |
 | D2 | **Every contact read is audited** (`grower_contact_read`: who, which grower, when; never the number) | PRV-5 accountability for decrypting PII |
 | D3 | **ACTIVE growers only**; others are 404 (no messages to growers without consent) | Consent first (GRW-03) |
-| D4 | **The OpenAPI contract describes the merge-patch bodies** of `PATCH /growers/{id}` and `PATCH …/farms/{farmId}` and the farm create body with their fields (`@Schema(implementation=…)`), instead of Jackson's `JsonNode` bean | The generated UI types were unusable (frontend follow-up) |
+| D4 | **The OpenAPI contract describes the merge-patch bodies** of `PATCH /growers/{id}` and `PATCH …/farms/{farmId}` and the farm create body by their fields. The controllers keep reading JSON trees (a merge patch must tell "absent" from "null"); an `OpenApiCustomizer` (`ContractBodies`) registers the documentation-only records in `PatchDocs` as `FarmCreateRequest`, `FarmPatch` and `GrowerPatch`, points the three operations at them and removes Jackson's `JsonNode` bean from the contract | The generated UI types were unusable (frontend follow-up); one place instead of annotations on every signature |
 
 ## 1. Behaviour (rules)
 | Rule | Given | When | Then |
