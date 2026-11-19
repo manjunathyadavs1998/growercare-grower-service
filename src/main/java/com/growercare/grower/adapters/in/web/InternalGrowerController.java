@@ -14,7 +14,13 @@ import org.springframework.web.bind.annotation.RestController;
 class InternalGrowerController {
 
     /** SPEC-GRW-07: one contact read for a sender. */
-    record ContactView(String phone, String language, String status) { }
+    record ContactView(String phone, String language, String status) {
+        /** The phone never appears in logs or messages (PRV-5); only the JSON body carries it to the sender. */
+        @Override
+        public String toString() {
+            return "ContactView[phone=***, language=" + language + ", status=" + status + "]";
+        }
+    }
 
     private final GrowerQueries queries;
     private final GrowerContacts contacts;

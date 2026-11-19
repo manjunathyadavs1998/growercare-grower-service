@@ -44,6 +44,13 @@ class GrowerContactIT extends GrowerApiTestBase {
         assertThat(stored).doesNotContain("9876543210");                                    // never the number
     }
 
+    @Test
+    void GRW_R320_noContactObjectPrintsThePhone() {
+        var web = new com.growercare.grower.adapters.in.web.ContactViewProbe().view("+919876543210");
+        assertThat(web).doesNotContain("9876543210");
+        assertThat(new com.growercare.grower.application.GrowerContacts.Contact("+919876543210", "mr", "ACTIVE").toString()).doesNotContain("9876543210");
+    }
+
     static Stream<Arguments> notActiveOrUnknown() {
         return Stream.of(
                 argumentSet("GRW-E321 G3 is PENDING_CONSENT", Long.toString(SeedGrowers.G3.growerId())),
